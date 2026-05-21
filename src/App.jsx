@@ -1013,14 +1013,49 @@ export default function App() {
             </div>
             <div className="flex-1 overflow-auto p-4">
               <table className="w-full text-left text-xs border-collapse">
-                <thead><tr className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800 sticky top-0 z-10"><th className="p-3">Site ID</th><th className="p-3">Site Name</th><th className="p-3">Provinsi</th><th className="p-3">Kabupaten</th><th className="p-3">Koneksi</th><th className="p-3">Provider</th><th className="p-3">SLA (AV)</th><th className="p-3">Status</th></tr></thead>
+                <thead>
+                  <tr className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800 sticky top-0 z-10">
+                    <th className="p-3">Site ID</th>
+                    <th className="p-3">Site Name</th>
+                    <th className="p-3">Provinsi</th>
+                    <th className="p-3">Kabupaten</th>
+                    <th className="p-3">Koneksi</th>
+                    <th className="p-3">Provider</th>
+                    {/* DUA HEADER BARU DI BAWAH INI */}
+                    <th className="p-3">Struktur</th>
+                    <th className="p-3">Bandwidth</th>
+                    <th className="p-3">SLA (AV)</th>
+                    <th className="p-3">Status</th>
+                  </tr>
+                </thead>
                 <tbody className="divide-y divide-slate-850">
                   {modalTableData.length > 0 ? modalTableData.map((feature, idx) => {
                     const p = feature.properties;
                     return (
-                      <tr key={idx} className="hover:bg-slate-850/50 transition font-sans"><td className="p-3 font-mono font-medium text-sky-400">{p.kodesite || '-'}</td><td className="p-3 font-semibold text-slate-200">{p["NAMA SITE"] || p.text_site || '-'}</td><td className="p-3 text-slate-300">{p.nama_prop || p.PROVINSI || p.provinsi || '-'}</td><td className="p-3 text-slate-300">{p.nama_kab || p.KABUPATEN || p.kabupaten || p["KABUPATEN/KOTA"] || '-'}</td><td className="p-3 text-slate-400">{p.type_koneksi || '-'}</td><td className="p-3 text-slate-300">{p.Provider || '-'}</td><td className="p-3 font-mono text-amber-400">{(parseSLA(p.AV) * 100).toFixed(2)}%</td><td className="p-3"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${p.status_link === 'AKTIF' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>{p.status_link || 'UNKNOWN'}</span></td></tr>
+                      <tr key={idx} className="hover:bg-slate-850/50 transition font-sans">
+                        <td className="p-3 font-mono font-medium text-sky-400">{p.kodesite || '-'}</td>
+                        <td className="p-3 font-semibold text-slate-200">{p["NAMA SITE"] || p.text_site || '-'}</td>
+                        <td className="p-3 text-slate-300">{p.nama_prop || p.PROVINSI || p.provinsi || '-'}</td>
+                        <td className="p-3 text-slate-300">{p.nama_kab || p.KABUPATEN || p.kabupaten || p["KABUPATEN/KOTA"] || '-'}</td>
+                        <td className="p-3 text-slate-400">{p.type_koneksi || '-'}</td>
+                        <td className="p-3 text-slate-300">{p.Provider || '-'}</td>
+                        {/* DUA DATA BARU DI BAWAH INI */}
+                        <td className="p-3 text-slate-300">{p.STRUKTUR || '-'}</td>
+                        <td className="p-3 text-slate-300">{p.bandwidth || '-'}</td>
+                        <td className="p-3 font-mono text-amber-400">{(parseSLA(p.AV) * 100).toFixed(2)}%</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${p.status_link === 'AKTIF' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                            {p.status_link || 'UNKNOWN'}
+                          </span>
+                        </td>
+                      </tr>
                     );
-                  }) : (<tr><td colSpan="8" className="p-8 text-center text-slate-500 italic">No matching records available.</td></tr>)}
+                  }) : (
+                    <tr>
+                      {/* colSpan diubah dari 8 menjadi 10 agar tabel tidak bolong */}
+                      <td colSpan="10" className="p-8 text-center text-slate-500 italic">No matching records available.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
