@@ -668,6 +668,45 @@ export default function App() {
   };
   const strukturOrder = ['PROVINSI', 'KAB-KOTA', 'KECAMATAN', 'KELURAHAN'];
 
+  // FUNGSI UNTUK EXPORT DATA KE EXCEL (CSV)
+  const handleExportExcel = () => {
+    if (!modalTableData || modalTableData.length === 0) return;
+
+    // 1. Siapkan Header Kolom
+    const headers = ['Site ID', 'Site Name', 'Provinsi', 'Kabupaten', 'Koneksi', 'Provider', 'Struktur', 'Bandwidth', 'SLA (AV) %', 'Status'];
+
+    // 2. Susun Baris Data
+    const csvRows = [headers.join(',')];
+
+    modalTableData.forEach(feature => {
+      const p = feature.properties;
+      const row = [
+        `"${p.kodesite || ''}"`,
+        `"${p["NAMA SITE"] || p.text_site || ''}"`,
+        `"${p.nama_prop || p.PROVINSI || p.provinsi || ''}"`,
+        `"${p.nama_kab || p.KABUPATEN || p.kabupaten || p["KABUPATEN/KOTA"] || ''}"`,
+        `"${p.type_koneksi || ''}"`,
+        `"${p.Provider || ''}"`,
+        `"${p.STRUKTUR || ''}"`,
+        `"${p.bandwidth || ''}"`,
+        `${(parseSLA(p.AV) * 100).toFixed(2)}`,
+        `"${p.status_link || 'UNKNOWN'}"`
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    // 3. Proses Download File
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Export_Data_${selectedModal.toUpperCase()}_Sites.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-950 text-slate-100 font-sans antialiased">
       <div ref={mapContainer} className="absolute inset-0 z-0" />
@@ -1008,8 +1047,26 @@ export default function App() {
         <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <div className="bg-slate-900 w-full max-w-6xl h-[80vh] rounded-2xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
-              <div><h3 className="text-sm font-bold uppercase tracking-wider text-white">Raw Data Table — {selectedModal.toUpperCase()} SITES</h3><p className="text-xs text-slate-400 font-mono mt-0.5">Records Found: {modalTableData.length} lines</p></div>
-              <button onClick={() => setSelectedModal(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition">✕ Close Table</button>
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-white">Raw Data Table — {selectedModal.toUpperCase()} SITES</h3>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">Records Found: {modalTableData.length} lines</p>
+              </div>
+              
+              {/* Pembungkus Tombol Export & Close */}
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={handleExportExcel} 
+                  className="bg-emerald-600/20 border border-emerald-500/50 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-semibold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-2"
+                >
+                  <span>⬇</span> Export Excel
+                </button>
+                <button 
+                  onClick={() => setSelectedModal(null)} 
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition font-semibold"
+                >
+                  ✕ Close Table
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-auto p-4">
               <table className="w-full text-left text-xs border-collapse">
