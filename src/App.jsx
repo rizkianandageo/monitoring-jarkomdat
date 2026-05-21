@@ -172,7 +172,7 @@ const TrendChart = ({ data }) => {
 };
 
 // ==========================================================
-// KOMPONEN: MINI DONUT CHART (PIE CHART)
+// KOMPONEN: MINI DONUT CHART (PIE CHART) DENGAN LEGENDA
 // ==========================================================
 const DonutStat = ({ title, data }) => {
   const colors = ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ef4444', '#a855f7'];
@@ -189,11 +189,12 @@ const DonutStat = ({ title, data }) => {
       <h4 className="text-[9px] uppercase tracking-wider text-slate-500 font-bold text-center h-6 leading-tight flex items-center justify-center">{title}</h4>
       
       <div 
-        className="relative w-10 h-10 mt-0 mb-1.5 flex items-center justify-center rounded-full cursor-help hover:scale-110 transition-transform shadow-[0_0_10px_rgba(0,0,0,0.5)] group/chart" 
+        className="relative w-10 h-10 mt-0 mb-1.5 flex items-center justify-center rounded-full cursor-help hover:scale-110 transition-transform shadow-[0_0_10px_rgba(0,0,0,0.5)] group/chart flex-shrink-0" 
         style={{ background: `conic-gradient(${gradient || '#1e293b 0% 100%'})` }}
       >
          <div className="w-6 h-6 bg-slate-900 rounded-full shadow-inner pointer-events-none" />
          
+         {/* TOOLTIP HOVER */}
          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-max min-w-[130px] bg-slate-900/95 backdrop-blur-md border border-slate-700 p-2.5 rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.8)] opacity-0 group-hover/chart:opacity-100 transition-opacity duration-200 pointer-events-none z-50 text-[10px]">
            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-solid border-t-slate-700 border-t-8 border-x-transparent border-x-8 border-b-0" />
            <h3 className="text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800 pb-1 mb-1.5">{title} Details</h3>
@@ -206,13 +207,27 @@ const DonutStat = ({ title, data }) => {
          </div>
       </div>
       
-      <div className="text-[8px] text-center w-full leading-tight px-0.5">
-        {data[0] ? (
-          <div className="truncate text-slate-300" title={`Top 1: ${data[0].name}`}>
-            <span className="font-bold" style={{color: colors[0]}}>{data[0].pct}%</span> <br/>
-            <span className="truncate inline-block w-full max-w-[55px] text-slate-400 font-medium">{data[0].name}</span>
-          </div>
-        ) : <span className="text-slate-600">-</span>}
+      {/* LEGENDA WARNA DITENGAHKAN */}
+      <div className="flex w-full justify-center mt-0.5">
+        <div className="flex flex-col gap-[3px] overflow-hidden w-[95%] pl-2 xl:pl-3">
+          {data.length > 0 ? (
+            data.slice(0, 3).map((d, i) => (
+              <div key={d.name} className="flex items-center gap-1.5 w-full text-[8px] leading-none" title={`${d.name}: ${d.pct}%`}>
+                <div className="w-1.5 h-1.5 rounded-sm flex-shrink-0" style={{ backgroundColor: colors[i % colors.length] }} />
+                <span className="truncate text-slate-400 font-medium">{d.name}</span>
+              </div>
+            ))
+          ) : (
+            <span className="text-[8px] text-slate-600 text-center w-full">-</span>
+          )}
+          
+          {/* Indikator jika ada lebih dari 3 item */}
+          {data.length > 3 && (
+            <div className="text-[7px] text-slate-600 font-medium italic text-left pl-3">
+              +{data.length - 3} lainnya
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -927,12 +942,16 @@ export default function App() {
       {/* ==========================================================
           5 KARTU BAWAH (LAYOUT 50:50 LEBAR PROPORSIONAL)
           ========================================================== */}
-      <div className="absolute bottom-4 left-4 right-4 z-10 pointer-events-none">
-        <div className="flex flex-col lg:flex-row gap-4 pointer-events-auto h-auto lg:h-[120px] w-full">
+      {/* PERUBAHAN 1: bottom-4 diganti menjadi bottom-8 agar naik ke atas */}
+      <div className="absolute bottom-8 left-4 right-4 z-10 pointer-events-none">
+        
+        {/* PERUBAHAN 2: lg:h-[120px] diganti lg:h-[140px] dan tambah items-stretch */}
+        <div className="flex flex-col lg:flex-row gap-4 pointer-events-auto h-auto lg:h-[140px] w-full items-stretch">
           
           {/* SISI KIRI: 50% Layar (Dibagi 3 Kartu Kecil) */}
           <div className="flex-1 w-full lg:w-1/2 grid grid-cols-3 gap-3 h-full">
-            <div onClick={() => setSelectedModal('total')} className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
+            {/* PERUBAHAN 3: Tambah h-full di akhir class kartu */}
+            <div onClick={() => setSelectedModal('total')} className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
               <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-blue-400 transition leading-tight">1. Total Site</div>
               <div className="flex items-baseline justify-between mt-1">
                 <span className="text-xl xl:text-3xl font-bold font-mono text-white">{metrics.total}</span>
@@ -940,7 +959,7 @@ export default function App() {
               </div>
             </div>
 
-            <div onClick={() => setSelectedModal('online')} className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-emerald-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
+            <div onClick={() => setSelectedModal('online')} className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-emerald-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
               <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-emerald-400 transition leading-tight">2. Online Site</div>
               <div className="flex items-baseline justify-between mt-1">
                 <div className="flex items-baseline gap-1 xl:gap-2">
@@ -951,7 +970,7 @@ export default function App() {
               </div>
             </div>
 
-            <div onClick={() => setSelectedModal('offline')} className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-red-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
+            <div onClick={() => setSelectedModal('offline')} className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-red-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
               <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-red-400 transition leading-tight">3. Offline Site</div>
               <div className="flex items-baseline justify-between mt-1">
                 <div className="flex items-baseline gap-1 xl:gap-2">
@@ -965,7 +984,7 @@ export default function App() {
 
           {/* SISI KANAN: 50% Layar (Dibagi 2 Kartu Lebih Besar) */}
           <div className="flex-1 w-full lg:w-1/2 grid grid-cols-2 gap-3 h-full">
-            <div className="bg-slate-900/80 backdrop-blur-md p-2 px-3 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between group relative overflow-visible z-10">
+            <div className="bg-slate-900/80 backdrop-blur-md p-2 px-3 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between group relative overflow-visible z-10 h-full">
               <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-tight">4. Data Summary</div>
               <div className="flex justify-between items-start gap-1 flex-1 mt-1">
                  <DonutStat title="Tipe Koneksi" data={summaryData.tipe} />
@@ -976,7 +995,7 @@ export default function App() {
             </div>
 
             {/* DUAL RANGE SLIDER CARD */}
-            <div className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between relative group z-0">
+            <div className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between relative group z-0 h-full">
               <div className="flex justify-between items-start">
                 <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-tight mt-0.5">5. Filter Waktu</div>
                 <CustomSelect 
