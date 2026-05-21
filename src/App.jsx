@@ -516,7 +516,7 @@ export default function App() {
         // 2. Ubah URL pmtiles menjadi seperti di bawah ini
         map.current.addSource('batas-desa', { 
           type: 'vector', 
-          url: `pmtiles://${baseUrl}batas_administrasi.pmtiles` 
+          url: 'pmtiles://https://github.com/rizkianandageo/monitoring-jarkomdat/releases/download/v1.0.0/batas_administrasi.pmtiles' 
         });
         map.current.addLayer({
           id: 'batas-desa-fill', type: 'fill', source: 'batas-desa', 'source-layer': 'batas_administrasi',
