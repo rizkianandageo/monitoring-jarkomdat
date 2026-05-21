@@ -510,7 +510,10 @@ export default function App() {
 
     const loadLayers = () => {
       if (!map.current.getSource('batas-desa')) {
+        // 1. Pastikan baris baseUrl ini ada di dalam useEffect tempat load layers
         const baseUrl = window.location.href.split('#')[0].replace(/\/$/, '') + '/';
+
+        // 2. Ubah URL pmtiles menjadi seperti di bawah ini
         map.current.addSource('batas-desa', { 
           type: 'vector', 
           url: `pmtiles://${baseUrl}batas_administrasi.pmtiles` 
