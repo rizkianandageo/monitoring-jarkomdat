@@ -20,6 +20,25 @@ const parseSLA = (val) => {
   return num;
 };
 
+// 3. Fungsi Pewarnaan Provider Berdasarkan Brand
+const getProviderColor = (providerName) => {
+  const name = String(providerName).toUpperCase();
+  if (name.includes('TELKOM')) return { text: 'text-red-500', bg: 'bg-red-500' };
+  if (name.includes('ICON')) return { text: 'text-teal-400', bg: 'bg-teal-400' };
+  if (name.includes('XL')) return { text: 'text-amber-500', bg: 'bg-amber-500' };
+  return { text: 'text-sky-400', bg: 'bg-sky-400' }; // Default warna biru
+};
+
+// 4. Fungsi Klasifikasi Warna Nilai Ketersediaan (AV)
+const getAVColorClass = (val) => {
+  if (val === null || val === undefined || val === '' || val === '-') return 'text-slate-300';
+  const num = parseSLA(val) * 100;
+  if (num > 90) return 'text-emerald-400'; // Hijau (>90%)
+  if (num >= 70) return 'text-amber-500';   // Oranye (70-90%)
+  if (num >= 50) return 'text-yellow-400';  // Kuning (50-70%)
+  return 'text-red-500';                    // Merah (<50%)
+};
+
 // ==========================================================
 // KOMPONEN: CUSTOM SINGLE SELECT DROPDOWN (TEMA SERAGAM POPOVER)
 // ==========================================================
@@ -236,6 +255,11 @@ const DonutStat = ({ title, data }) => {
 export default function App() {
   const mapContainer = useRef(null);
   const map = useRef(null);
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
 
   const [rawData, setRawData] = useState([]);
   const [mapReady, setMapReady] = useState(false);
@@ -489,8 +513,16 @@ export default function App() {
       return val;
     };
 
+    // FORMATTER BARU: Melebur tipe koneksi campuran menjadi WIRELINE
+    const formatTipeKoneksi = (val) => {
+      const upperVal = String(val).toUpperCase();
+      if (upperVal.includes('WIRELINE')) return 'WIRELINE';
+      if (upperVal.includes('VSAT')) return 'VSAT';
+      return val;
+    };
+
     return {
-      tipe: countBy('type_koneksi'),
+      tipe: countBy('type_koneksi', formatTipeKoneksi), // Implementasi formatter di sini
       provider: countBy('Provider'),
       struktur: countBy('STRUKTUR', formatStruktur),
       bandwidth: countBy('bandwidth')
@@ -498,6 +530,9 @@ export default function App() {
   }, [filteredFeatures]);
 
   useEffect(() => {
+    // 1. TAMBAHKAN BARIS INI: Tahan proses jika belum login atau kontainer peta belum ada
+    if (!isLoggedIn || !mapContainer.current) return;
+    
     if (map.current) return;
 
     const styles = {
@@ -523,11 +558,10 @@ export default function App() {
     }), 'bottom-right');
 
     const loadLayers = () => {
+      // ... (Isi fungsi loadLayers Anda biarkan saja sama persis seperti sebelumnya) ...
       if (!map.current.getSource('batas-desa')) {
-        // 1. Pastikan baris baseUrl ini ada di dalam useEffect tempat load layers
         const baseUrl = window.location.href.split('#')[0].replace(/\/$/, '') + '/';
 
-        // 2. Ubah URL pmtiles menjadi seperti di bawah ini
         map.current.addSource('batas-desa', { 
           type: 'vector', 
           url: `pmtiles://${baseUrl}batas_administrasi.pmtiles` 
@@ -585,7 +619,10 @@ export default function App() {
     });
 
     setMapReady(true);
-  }, []);
+    
+  // 2. UBAH BAGIAN DEPENDENSI INI (DI BARIS PALING BAWAH USE-EFFECT): 
+  // Pastikan `isLoggedIn` dimasukkan ke dalam kurung siku
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (map.current && mapReady) {
@@ -656,14 +693,27 @@ export default function App() {
   };
 
   const renderField = (level, val) => {
+    // 1. Jika nilai kosong, kembalikan strip
     if (!val || String(val).trim() === '' || String(val).toLowerCase() === 'undefined') return '-';
-    if (!clickedSite || !clickedSite.STRUKTUR) return val;
-    const struct = clickedSite.STRUKTUR.toUpperCase();
-    if (struct === 'PROVINSI') { if (level !== 'prov') return '-'; } 
-    else if (struct === 'KAB-KOTA' || struct === 'KABUPATEN') { if (level === 'kec' || level === 'kel') return '-'; } 
-    else if (struct === 'KECAMATAN') { if (level === 'kel') return '-'; }
     
-    return level === 'struct' ? formatStruktur(val) : val;
+    // 2. Jika yang diminta adalah kolom struktur, langsung format dan tampilkan
+    if (level === 'struct') return formatStruktur(val);
+
+    // 3. Logika penyembunyian hierarki wilayah yang benar
+    if (clickedSite && clickedSite.STRUKTUR) {
+      const struct = clickedSite.STRUKTUR.toUpperCase();
+      if (struct === 'PROVINSI') { 
+        if (level === 'kab' || level === 'kec' || level === 'kel') return '-'; 
+      } 
+      else if (struct === 'KAB-KOTA' || struct === 'KABUPATEN') { 
+        if (level === 'kec' || level === 'kel') return '-'; 
+      } 
+      else if (struct === 'KECAMATAN') { 
+        if (level === 'kel') return '-'; 
+      }
+    }
+    
+    return val;
   };
 
   const modalTableData = useMemo(() => {
@@ -720,6 +770,91 @@ export default function App() {
     link.click();
     document.body.removeChild(link);
   };
+
+  // --- TAMBAHKAN LOGIKA INTERSEPTOR LOGIN INI ---
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    // Kredensial standar (bisa Anda sesuaikan sesuai kebutuhan)
+    if (username === 'admin' && password === 'admin123') {
+      setIsLoggedIn(true);
+      setLoginError('');
+    } else {
+      setLoginError('Kredensial salah! Silakan periksa kembali.');
+    }
+  };
+
+  // Jika belum login, render halaman login terlebih dahulu
+  if (!isLoggedIn) {
+    return (
+      <div className="w-screen h-screen bg-slate-950 flex items-center justify-center font-sans antialiased relative overflow-hidden">
+        {/* Ornamen latar belakang partikel cahaya neon */}
+        <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-emerald-500/5 blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-sky-500/5 blur-[120px] pointer-events-none" />
+        
+        {/* Kartu Box Login */}
+        <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-md border border-slate-800 p-8 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-t-4 border-t-emerald-500 flex flex-col items-center z-10">
+          
+          {/* Logo Kemendagri */}
+          <img src="./kemendagri.svg" alt="Logo Kemendagri" className="h-20 w-20 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.2)] mb-4" />
+          
+          {/* Judul Sistem */}
+          <h1 className="text-sm font-bold tracking-[0.2em] text-emerald-400 text-center uppercase drop-shadow-md">
+            JARKOMDAT MONITORING SYSTEM
+          </h1>
+          <p className="text-[10px] text-slate-500 font-medium tracking-wide mt-1 mb-8 uppercase">
+            Kementerian Dalam Negeri Republik Indonesia
+          </p>
+
+          {/* Form Input */}
+          <form onSubmit={handleLoginSubmit} className="w-full space-y-4">
+            <div>
+              <label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block mb-1.5">Username</label>
+              <input 
+                type="text" 
+                placeholder="Masukkan username..." 
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-semibold focus:outline-none focus:border-emerald-500 transition shadow-inner"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block mb-1.5">Password</label>
+              <input 
+                type="password" 
+                placeholder="Masukkan password..." 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-semibold focus:outline-none focus:border-emerald-500 transition shadow-inner"
+                required
+              />
+            </div>
+
+            {/* Pesan Error */}
+            {loginError && (
+              <div className="bg-red-500/10 border border-red-500/30 p-2.5 rounded-lg text-[11px] text-red-400 font-medium text-center animate-pulse">
+                ⚠️ {loginError}
+              </div>
+            )}
+
+            {/* Tombol Masuk */}
+            <button 
+              type="submit"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs uppercase tracking-widest py-2.5 rounded-lg transition-colors cursor-pointer shadow-[0_4px_15px_rgba(16,185,129,0.2)] mt-2"
+            >
+              Masuk ke Sistem
+            </button>
+          </form>
+
+          {/* Catatan Kaki Hak Cipta */}
+          <div className="text-[9px] text-slate-600 font-mono mt-8 text-center uppercase tracking-wider">
+            Secure Authentication v1.0
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-950 text-slate-100 font-sans antialiased">
@@ -851,48 +986,132 @@ export default function App() {
       </div>
 
       {/* LACI INFORMASI DETAIL */}
+      {/* Ketinggian disesuaikan menjadi h-fit agar elastis mengikuti kontennya yang kini ringkas */}
       <div className={`absolute top-1/2 -translate-y-1/2 left-0 z-30 flex items-center transition-transform duration-300 ease-in-out ${isDetailOpen ? 'translate-x-0' : '-translate-x-[22rem]'}`}>
-        <div className="w-[22rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-br-2xl border-y border-r border-emerald-500/40 shadow-[20px_0_30px_rgba(0,0,0,0.5)] h-[62vh] overflow-y-auto pointer-events-auto flex flex-col">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-4 flex items-center gap-2">
+        <div className="w-[22rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-br-2xl border-y border-r border-emerald-500/40 shadow-[20px_0_30px_rgba(0,0,0,0.5)] h-fit max-h-[70vh] overflow-y-auto pointer-events-auto flex flex-col custom-scrollbar">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-3 flex items-center gap-2 flex-shrink-0">
             <span className="text-base">📋</span> Panel Informasi Detail
           </h2>
           
           <div className="flex-1 overflow-y-auto pr-1">
             {clickedSite ? (
-              <div className="space-y-3 text-xs">
-                <div><label className="text-[10px] uppercase text-slate-500 block font-semibold">Site Name</label><p className="text-sm font-bold text-emerald-400 leading-tight">{clickedSite["NAMA SITE"] || clickedSite.text_site || '-'}</p></div>
-                <div><label className="text-[10px] uppercase text-slate-500 block">Site ID</label><p className="font-mono font-medium text-slate-200">{clickedSite.kodesite || '-'}</p></div>
-                <div className="grid grid-cols-2 gap-3 border-y border-slate-800/60 py-3 my-3 bg-slate-950/40 p-2 rounded">
-                  <div><label className="text-[10px] uppercase text-slate-500 block">Current Site SLA</label><p className={`font-mono font-bold text-base ${(parseSLA(clickedSite.AV) * 100) >= 95 ? 'text-emerald-400' : 'text-amber-400'}`}>{(parseSLA(clickedSite.AV) * 100).toFixed(2)}%</p></div>
-                  <div><label className="text-[10px] uppercase text-slate-500 block">Struktur</label><p className="font-semibold text-slate-300">{renderField('struct', clickedSite.STRUKTUR)}</p></div>
-                </div>
-                <div className="space-y-2">
-                  <div><label className="text-[10px] uppercase text-slate-500 block">Provinsi</label><p className="text-slate-300 font-medium">{renderField('prov', clickedSite.nama_prop || clickedSite.PROVINSI || clickedSite.provinsi)}</p></div>
-                  <div><label className="text-[10px] uppercase text-slate-500 block">Kabupaten / Kota</label><p className="text-slate-300 font-medium">{renderField('kab', clickedSite.nama_kab || clickedSite.KABUPATEN || clickedSite.kabupaten || clickedSite["KABUPATEN/KOTA"])}</p></div>
-                  <div><label className="text-[10px] uppercase text-slate-500 block">Kecamatan</label><p className="text-slate-300 font-medium">{renderField('kec', clickedSite.nama_kec || clickedSite.KECAMATAN || clickedSite.kecamatan)}</p></div>
-                  <div><label className="text-[10px] uppercase text-slate-500 block">Kelurahan / Desa</label><p className="text-slate-300 font-medium">{renderField('kel', clickedSite.nama_kel || clickedSite.KELURAHAN || clickedSite.kelurahan || clickedSite.DESA)}</p></div>
-                  <div className="pt-2 border-t border-slate-850 grid grid-cols-2 gap-3">
-                    <div><label className="text-[10px] uppercase text-slate-500 block">Tipe Koneksi</label><p className="text-slate-300 font-medium">{renderField('type', clickedSite.type_koneksi)}</p></div>
-                    <div><label className="text-[10px] uppercase text-slate-500 block">Bandwidth</label><p className="text-slate-300 font-medium">{renderField('bw', clickedSite.bandwidth)}</p></div>
+              <div className="space-y-2.5 text-xs pb-2">
+                
+                {/* BARIS 1: Site Name & Site ID Berdampingan */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase text-slate-500 block font-semibold">Site Name</label>
+                    <p className="text-sm font-bold text-emerald-400 leading-tight truncate" title={clickedSite["NAMA SITE"] || clickedSite.text_site}>{clickedSite["NAMA SITE"] || clickedSite.text_site || '-'}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-[10px] uppercase text-slate-500 block">Provider</label><p className="text-slate-300 font-medium">{renderField('prov', clickedSite.Provider)}</p></div>
-                    <div><label className="text-[10px] uppercase text-slate-500 block">Link Kategori</label><p className="text-slate-300 font-medium">{clickedSite.dual_link ? 'Dual Link' : 'Single Link'}</p></div>
+                  <div>
+                    <label className="text-[10px] uppercase text-slate-500 block font-semibold">Site ID</label>
+                    <p className="font-mono font-bold text-slate-200 text-sm truncate">{clickedSite.kodesite || '-'}</p>
                   </div>
                 </div>
+                
+                {/* BARIS 2: Availability & Struktur */}
+                <div className="grid grid-cols-2 gap-3 border-y border-slate-800/60 py-2.5 my-2 bg-slate-950/40 p-2 rounded">
+                  <div>
+                    <label className="text-[10px] uppercase text-slate-500 block">Availability</label>
+                    <p className={`font-mono font-bold text-base ${getAVColorClass(clickedSite.AV)}`}>
+                      {(parseSLA(clickedSite.AV) * 100).toFixed(2)}%
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase text-slate-500 block">Struktur</label>
+                    <p className="font-semibold text-slate-300 truncate">{renderField('struct', clickedSite.STRUKTUR)}</p>
+                  </div>
+                </div>
+                
+                {/* BARIS 3: Provinsi & Kecamatan Berdampingan */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase text-slate-500 block">Provinsi</label>
+                    <p className="text-slate-300 font-semibold truncate" title={renderField('prov', clickedSite.nama_prop || clickedSite.PROVINSI || clickedSite.provinsi)}>
+                      {renderField('prov', clickedSite.nama_prop || clickedSite.PROVINSI || clickedSite.provinsi)}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase text-slate-500 block">Kecamatan</label>
+                    <p className="text-slate-300 font-semibold truncate" title={renderField('kec', clickedSite.nama_kec || clickedSite.KECAMATAN || clickedSite.kecamatan)}>
+                      {renderField('kec', clickedSite.nama_kec || clickedSite.KECAMATAN || clickedSite.kecamatan)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* BARIS 4: Kabupaten & Kelurahan Berdampingan */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] uppercase text-slate-500 block">Kabupaten / Kota</label>
+                    <p className="text-slate-300 font-semibold truncate" title={renderField('kab', clickedSite.nama_kab || clickedSite.KABUPATEN || clickedSite.kabupaten || clickedSite["KABUPATEN/KOTA"])}>
+                      {renderField('kab', clickedSite.nama_kab || clickedSite.KABUPATEN || clickedSite.kabupaten || clickedSite["KABUPATEN/KOTA"])}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase text-slate-500 block">Kelurahan / Desa</label>
+                    <p className="text-slate-300 font-semibold truncate" title={renderField('kel', clickedSite.nama_kel || clickedSite.KELURAHAN || clickedSite.kelurahan || clickedSite.DESA)}>
+                      {renderField('kel', clickedSite.nama_kel || clickedSite.KELURAHAN || clickedSite.kelurahan || clickedSite.DESA)}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* PROVIDER 1 */}
+                {clickedSite.Provider_1 && clickedSite.Provider_1 !== '-' && clickedSite.Provider_1 !== 'nan' && (
+                  <div className="pt-2.5 mt-1 border-t border-slate-800/80">
+                    <div className={`text-[10px] font-bold mb-1 flex items-center gap-1.5 ${getProviderColor(clickedSite.Provider_1).text}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${getProviderColor(clickedSite.Provider_1).bg}`}></span>
+                      {clickedSite.Provider_1.toUpperCase()}
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 text-[11px] pl-2 border-l border-slate-800">
+                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_1 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_1 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_1 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_1 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_1)}`}>{clickedSite.AV_1 || '-'}</p></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* PROVIDER 2 */}
+                {clickedSite.Provider_2 && clickedSite.Provider_2 !== '-' && clickedSite.Provider_2 !== 'nan' && (
+                  <div className="pt-2.5 mt-1 border-t border-slate-800/80">
+                    <div className={`text-[10px] font-bold mb-1 flex items-center gap-1.5 ${getProviderColor(clickedSite.Provider_2).text}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${getProviderColor(clickedSite.Provider_2).bg}`}></span>
+                      {clickedSite.Provider_2.toUpperCase()}
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 text-[11px] pl-2 border-l border-slate-800">
+                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_2 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_2 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_2 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_2 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_2)}`}>{clickedSite.AV_2 || '-'}</p></div>
+                    </div>
+                  </div>
+                )}
+
+                {/* AVG. AV SUM BOX (Hanya muncul jika dual link aktif) */}
+                {clickedSite.AV_Rata_Rata && clickedSite.AV_Rata_Rata !== '-' && clickedSite.AV_Rata_Rata !== 'nan' && clickedSite.Provider_2 !== '-' && (
+                  <div className="pt-2 mt-1 border-t border-slate-800/80">
+                    <div className="flex justify-between items-center bg-slate-950/60 p-2 rounded-lg border border-slate-800/80 shadow-inner">
+                      <span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">AVG. AV</span>
+                      <span className={`font-mono font-bold text-sm drop-shadow-md ${getAVColorClass(clickedSite.AV_Rata_Rata)}`}>
+                        {clickedSite.AV_Rata_Rata}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
               </div>
             ) : 
             clickedRegion ? (
-              <div className="space-y-4 text-xs">
-                <div className="bg-sky-500/10 border border-sky-500/20 p-3 rounded-lg mb-2"><p className="text-sky-400 italic">Data Wilayah Administrasi</p></div>
-                <div><label className="text-[10px] uppercase text-slate-500 block">Provinsi</label><p className="text-base font-bold text-slate-200">{clickedRegion.nama_prop || '-'}</p></div>
-                <div><label className="text-[10px] uppercase text-slate-500 block">Kabupaten / Kota</label><p className="text-sm font-semibold text-slate-300">{clickedRegion.nama_kab || '-'}</p></div>
-                <div><label className="text-[10px] uppercase text-slate-500 block">Kecamatan</label><p className="text-sm font-semibold text-slate-300">{clickedRegion.nama_kec || '-'}</p></div>
-                <div><label className="text-[10px] uppercase text-slate-500 block">Kelurahan / Desa</label><p className="text-sm font-semibold text-slate-300">{clickedRegion.nama_kel || '-'}</p></div>
+              <div className="space-y-3 text-xs">
+                <div className="bg-sky-500/10 border border-sky-500/20 p-2.5 rounded-lg mb-1"><p className="text-sky-400 italic">Data Wilayah Administrasi</p></div>
+                <div><label className="text-[10px] uppercase text-slate-500 block">Provinsi</label><p className="text-sm font-bold text-slate-200">{clickedRegion.nama_prop || '-'}</p></div>
+                <div><label className="text-[10px] uppercase text-slate-500 block">Kabupaten / Kota</label><p className="text-xs font-semibold text-slate-300">{clickedRegion.nama_kab || '-'}</p></div>
+                <div><label className="text-[10px] uppercase text-slate-500 block">Kecamatan</label><p className="text-xs font-semibold text-slate-300">{clickedRegion.nama_kec || '-'}</p></div>
+                <div><label className="text-[10px] uppercase text-slate-500 block">Kelurahan / Desa</label><p className="text-xs font-semibold text-slate-300">{clickedRegion.nama_kel || '-'}</p></div>
               </div>
             ) : 
             (
-              <div className="h-full flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-800 rounded-lg text-slate-500"><span className="text-2xl mb-2">👆</span><p className="text-[11px]">Klik salah satu titik site atau wilayah pada peta.</p></div>
+              <div className="h-full flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-800 rounded-lg text-slate-500 my-auto"><span className="text-xl mb-1">👆</span><p className="text-[11px]">Klik titik site atau wilayah pada peta.</p></div>
             )}
           </div>
         </div>
