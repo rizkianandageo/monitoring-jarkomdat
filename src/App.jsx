@@ -296,27 +296,21 @@ export default function App() {
       const latest = uniqueMonths[uniqueMonths.length - 1]; 
       const [year, month] = latest.split('/');
       setSelectedYear(year);
-      setMonthRange([parseInt(month, 10), parseInt(month, 10)]); 
+      setSelectedMonth(parseInt(month, 10)); 
     }
   }, [uniqueMonths, selectedYear]);
 
-  // Generate array seluruh bulan yang masuk ke dalam tarikan slider
+  // Generate string bulan tunggal
   const activeMonths = useMemo(() => {
-    const arr = [];
-    if(!selectedYear) return arr;
-    for(let i = monthRange[0]; i <= monthRange[1]; i++) {
-        arr.push(`${selectedYear}/${String(i).padStart(2, '0')}`);
-    }
-    return arr;
-  }, [selectedYear, monthRange]);
+    if(!selectedYear) return [];
+    return [`${selectedYear}/${String(selectedMonth).padStart(2, '0')}`];
+  }, [selectedYear, selectedMonth]);
 
   const hasData = useMemo(() => {
     return activeMonths.some(m => uniqueMonths.includes(m));
   }, [activeMonths, uniqueMonths]);
 
-  const displayRange = monthRange[0] === monthRange[1] 
-    ? `${selectedYear}/${String(monthRange[0]).padStart(2, '0')}` 
-    : `${selectedYear}/${String(monthRange[0]).padStart(2, '0')} - ${String(monthRange[1]).padStart(2, '0')}`;
+  const displayRange = `${selectedYear}/${String(selectedMonth).padStart(2, '0')}`;
 
   const uniqueTypes = useMemo(() => [...new Set(rawData.map(f => f.properties.type_koneksi))].filter(Boolean).sort(), [rawData]);
   const uniqueStructures = useMemo(() => [...new Set(rawData.map(f => f.properties.STRUKTUR))].filter(Boolean).sort(), [rawData]);
@@ -994,7 +988,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* DUAL RANGE SLIDER CARD */}
+            {/* SINGLE SLIDER CARD */}
             <div className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between relative group z-0 h-full">
               <div className="flex justify-between items-start">
                 <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-tight mt-0.5">5. Filter Waktu</div>
@@ -1009,50 +1003,34 @@ export default function App() {
               </div>
               
               <div className="flex flex-col mt-auto pb-1">
-                {/* Custom Dual Range Slider menggunakan teknik overlapping input range */}
+                {/* Custom Single Range Slider */}
                 <div className="relative h-1.5 bg-slate-800 rounded-lg mt-1 w-full flex items-center">
-                  {/* Track Aktif di tengah */}
+                  {/* Track Aktif (Bar warna hijau dari ujung kiri ke titik bulat) */}
                   <div 
-                    className="absolute h-full bg-emerald-500 rounded-lg pointer-events-none transition-all duration-75"
-                    style={{
-                      left: `${((monthRange[0] - 1) / 11) * 100}%`,
-                      width: `${((monthRange[1] - monthRange[0]) / 11) * 100}%`
-                    }}
+                    className="absolute h-full bg-emerald-500 rounded-lg pointer-events-none transition-all duration-100"
+                    style={{ width: `${((selectedMonth - 1) / 11) * 100}%` }}
                   />
-                  {/* Slider Kiri (Min) */}
+                  
+                  {/* Slider Input Utama */}
                   <input 
-                    type="range" min="1" max="12" value={monthRange[0]}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      if (val <= monthRange[1]) setMonthRange([val, monthRange[1]]);
-                      else setMonthRange([monthRange[1], val]); // Auto swap kalau tertukar
-                    }}
+                    type="range" min="1" max="12" value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
                     disabled={uniqueYears.length === 0}
-                    className="absolute w-full h-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-400 [&::-webkit-slider-thumb]:appearance-none cursor-pointer z-20"
-                  />
-                  {/* Slider Kanan (Max) */}
-                  <input 
-                    type="range" min="1" max="12" value={monthRange[1]}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      if (val >= monthRange[0]) setMonthRange([monthRange[0], val]);
-                      else setMonthRange([val, monthRange[0]]); // Auto swap kalau tertukar
-                    }}
-                    disabled={uniqueYears.length === 0}
-                    className="absolute w-full h-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-400 [&::-webkit-slider-thumb]:appearance-none cursor-pointer z-20"
+                    className="absolute w-full h-full appearance-none bg-transparent cursor-pointer z-20 
+                    [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-400 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(16,185,129,0.8)] hover:[&::-webkit-slider-thumb]:scale-125 hover:[&::-webkit-slider-thumb]:transition-transform"
                   />
                 </div>
                 
                 {/* Legenda Angka Bulan */}
-                <div className="flex justify-between text-[9px] text-slate-500 mt-2 font-mono px-1">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => {
-                    const inRange = m >= monthRange[0] && m <= monthRange[1];
-                    return (
-                      <span key={m} className={inRange ? 'text-emerald-400 font-bold scale-125 transition-transform' : 'transition-transform'}>
-                        {String(m).padStart(2, '0')}
-                      </span>
-                    )
-                  })}
+                <div className="flex justify-between text-[9px] text-slate-500 mt-3 font-mono px-1">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
+                    <span 
+                      key={m} 
+                      className={m === selectedMonth ? 'text-emerald-400 font-bold scale-125 transition-transform' : 'transition-transform'}
+                    >
+                      {String(m).padStart(2, '0')}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
