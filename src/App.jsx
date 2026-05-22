@@ -1187,7 +1187,7 @@ export default function App() {
           5 KARTU BAWAH (LAYOUT 50:50 LEBAR PROPORSIONAL)
           ========================================================== */}
       {/* PERUBAHAN 1: bottom-4 diganti menjadi bottom-8 agar naik ke atas */}
-      <div className="absolute bottom-8 left-4 right-4 z-10 pointer-events-none">
+      <div className="absolute bottom-12 left-4 right-4 z-10 pointer-events-none">
         
         {/* PERUBAHAN 2: lg:h-[120px] diganti lg:h-[140px] dan tambah items-stretch */}
         <div className="flex flex-col lg:flex-row gap-4 pointer-events-auto h-auto lg:h-[140px] w-full items-stretch">
