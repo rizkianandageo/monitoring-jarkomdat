@@ -259,9 +259,8 @@ export default function App() {
   const [selectedProviders, setSelectedProviders] = useState([]);
   const [isProviderDropdownOpen, setIsProviderDropdownOpen] = useState(false);
 
-  // STATE BARU: DUAL RANGE SLIDER FILTER
   const [selectedYear, setSelectedYear] = useState('');
-  const [monthRange, setMonthRange] = useState([1, 1]);
+  const [selectedMonth, setSelectedMonth] = useState(1);
 
   const [selProv, setSelProv] = useState('');
   const [selKab, setSelKab] = useState('');
@@ -515,7 +514,13 @@ export default function App() {
       style: styles[currentBasemap], 
       center: [118.0, -2.5],
       zoom: 4.5,
+      attributionControl: false // 1. Matikan info teks panjang bawaan pabrik
     });
+
+    // 2. Tambahkan info kontrol baru yang otomatis ter-minimize (hanya ikon 'i')
+    map.current.addControl(new maplibregl.AttributionControl({
+      compact: true
+    }), 'bottom-right');
 
     const loadLayers = () => {
       if (!map.current.getSource('batas-desa')) {
@@ -525,14 +530,14 @@ export default function App() {
         // 2. Ubah URL pmtiles menjadi seperti di bawah ini
         map.current.addSource('batas-desa', { 
           type: 'vector', 
-          url: 'pmtiles://https://github.com/rizkianandageo/monitoring-jarkomdat/releases/download/v1.0.0/batas_administrasi.pmtiles' 
+          url: `pmtiles://${baseUrl}batas_administrasi.pmtiles` 
         });
         map.current.addLayer({
-          id: 'batas-desa-fill', type: 'fill', source: 'batas-desa', 'source-layer': 'batas_administrasi',
+          id: 'batas-desa-fill', type: 'fill', source: 'batas-desa', 'source-layer': 'batas_administrasi_clean',
           paint: { 'fill-color': '#111827', 'fill-opacity': currentBasemap === 'dark' ? 0.55 : 0.25 }
         });
         map.current.addLayer({
-          id: 'batas-desa-line', type: 'line', source: 'batas-desa', 'source-layer': 'batas_administrasi',
+          id: 'batas-desa-line', type: 'line', source: 'batas-desa', 'source-layer': 'batas_administrasi_clean',
           paint: { 'line-color': currentBasemap === 'dark' ? '#334155' : '#64748b', 'line-width': 0.2, 'line-opacity': 0.6 }
         });
       }
@@ -748,8 +753,10 @@ export default function App() {
       {/* SISI KANAN ATAS: BASEMAP & TREND CHART */}
       <div className="absolute top-4 right-4 z-10 pointer-events-none flex flex-col items-end gap-3">
         <div className="bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 shadow-xl flex gap-1 pointer-events-auto">
-          <button onClick={() => setCurrentBasemap('dark')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'dark' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Carto Dark</button>
-          <button onClick={() => setCurrentBasemap('osm')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'osm' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>OSM</button>
+          {/* Teks diubah menjadi Dark */}
+          <button onClick={() => setCurrentBasemap('dark')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'dark' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Dark</button>
+          {/* Teks diubah menjadi Light */}
+          <button onClick={() => setCurrentBasemap('osm')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'osm' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Light</button>
         </div>
         
         <TrendChart data={trendData} />
