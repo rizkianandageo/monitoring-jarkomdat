@@ -256,7 +256,8 @@ export default function App() {
   const mapContainer = useRef(null);
   const map = useRef(null);
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Cek apakah di memori browser sudah ada tiket login sebelumnya
+  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('jarkomdat_session') === 'true');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -774,13 +775,23 @@ export default function App() {
   // --- TAMBAHKAN LOGIKA INTERSEPTOR LOGIN INI ---
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    // Kredensial standar (bisa Anda sesuaikan sesuai kebutuhan)
     if (username === 'admin' && password === 'admin123') {
       setIsLoggedIn(true);
       setLoginError('');
+      // SIMPAN SESI KE MEMORI BROWSER
+      localStorage.setItem('jarkomdat_session', 'true');
     } else {
       setLoginError('Kredensial salah! Silakan periksa kembali.');
     }
+  };
+
+  // FUNGSI BARU: UNTUK LOGOUT
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setUsername('');
+    setPassword('');
+    // HAPUS SESI DARI MEMORI BROWSER
+    localStorage.removeItem('jarkomdat_session');
   };
 
   // Jika belum login, render halaman login terlebih dahulu
@@ -887,11 +898,24 @@ export default function App() {
 
       {/* SISI KANAN ATAS: BASEMAP & TREND CHART */}
       <div className="absolute top-4 right-4 z-10 pointer-events-none flex flex-col items-end gap-3">
-        <div className="bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 shadow-xl flex gap-1 pointer-events-auto">
-          {/* Teks diubah menjadi Dark */}
-          <button onClick={() => setCurrentBasemap('dark')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'dark' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Dark</button>
-          {/* Teks diubah menjadi Light */}
-          <button onClick={() => setCurrentBasemap('osm')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'osm' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Light</button>
+        {/* Kontainer baris atas untuk Basemap dan Logout */}
+        <div className="flex items-center gap-2 pointer-events-auto">
+          
+          {/* BASEMAP SWITCHER */}
+          <div className="bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 shadow-xl flex gap-1">
+            <button onClick={() => setCurrentBasemap('dark')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'dark' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Dark</button>
+            <button onClick={() => setCurrentBasemap('osm')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'osm' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Light</button>
+          </div>
+
+          {/* TOMBOL LOGOUT BARU */}
+          <button 
+            onClick={handleLogout} 
+            className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-slate-950 p-1.5 px-3 rounded-xl text-xs font-bold tracking-wider transition-colors shadow-xl h-full flex items-center"
+            title="Keluar dari Sistem"
+          >
+            LOGOUT
+          </button>
+          
         </div>
         
         <TrendChart data={trendData} />
