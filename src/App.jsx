@@ -1296,7 +1296,7 @@ export default function App() {
               <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-emerald-400 transition leading-tight">2. Online Site</div>
               <div className="flex flex-col mt-auto">
                 <span className="text-4xl xl:text-5xl font-bold font-mono text-emerald-400 leading-none mb-1">{metrics.online}</span>
-                <span className="text-[10px] font-mono text-emerald-500/80 font-bold mb-1">({metrics.onlinePct}%)</span>
+                <span className="text-[18px] font-mono text-emerald-500/80 font-bold mb-1">({metrics.onlinePct}%)</span>
                 <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
               </div>
             </div>
@@ -1305,7 +1305,7 @@ export default function App() {
               <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-red-400 transition leading-tight">3. Offline Site</div>
               <div className="flex flex-col mt-auto">
                 <span className="text-4xl xl:text-5xl font-bold font-mono text-red-400 leading-none mb-1">{metrics.offline}</span>
-                <span className="text-[10px] font-mono text-red-500/80 font-bold mb-1">({metrics.offlinePct}%)</span>
+                <span className="text-[18px] font-mono text-red-500/80 font-bold mb-1">({metrics.offlinePct}%)</span>
                 <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
               </div>
             </div>
