@@ -180,7 +180,7 @@ const TrendChart = ({ data }) => {
              <h3 className="text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800 pb-1 mb-1.5 text-center">{data[hoverIdx].month}</h3>
              <div className="flex justify-between items-center gap-4">
                {/* FIX 3: Teks SLA diubah menjadi AV */}
-               <span className="font-semibold drop-shadow-md text-emerald-400">• AV</span>
+               <span className="font-semibold drop-shadow-md text-emerald-400">AV</span>
                <span className="text-slate-200 font-mono font-bold text-sm">{data[hoverIdx].avg.toFixed(2)}%</span>
              </div>
            </div>
@@ -205,13 +205,15 @@ const DonutStat = ({ title, data }) => {
 
   return (
     <div className="flex flex-col items-center w-1/4 mt-[-4px]">
-      <h4 className="text-[9px] uppercase tracking-wider text-slate-500 font-bold text-center h-6 leading-tight flex items-center justify-center">{title}</h4>
+      <h4 className="text-[10px] uppercase tracking-wider text-slate-500 font-bold text-center h-6 leading-tight flex items-center justify-center">{title}</h4>
       
       <div 
-        className="relative w-10 h-10 mt-0 mb-1.5 flex items-center justify-center rounded-full cursor-help hover:scale-110 transition-transform shadow-[0_0_10px_rgba(0,0,0,0.5)] group/chart flex-shrink-0" 
+        /* UKURAN LINGKARAN DIPERBESAR (w-14 h-14) */
+        className="relative w-16 h-16 mt-1 mb-2 flex items-center justify-center rounded-full cursor-help hover:scale-110 transition-transform shadow-[0_0_10px_rgba(0,0,0,0.5)] group/chart flex-shrink-0" 
         style={{ background: `conic-gradient(${gradient || '#1e293b 0% 100%'})` }}
       >
-         <div className="w-6 h-6 bg-slate-900 rounded-full shadow-inner pointer-events-none" />
+         {/* UKURAN LUBANG DALAM DIPERBESAR (w-8 h-8) */}
+         <div className="w-8 h-8 bg-slate-900 rounded-full shadow-inner pointer-events-none" />
          
          {/* TOOLTIP HOVER */}
          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-max min-w-[130px] bg-slate-900/95 backdrop-blur-md border border-slate-700 p-2.5 rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.8)] opacity-0 group-hover/chart:opacity-100 transition-opacity duration-200 pointer-events-none z-50 text-[10px]">
@@ -226,25 +228,16 @@ const DonutStat = ({ title, data }) => {
          </div>
       </div>
       
-      {/* LEGENDA WARNA DITENGAHKAN */}
-      <div className="flex w-full justify-center mt-0.5">
-        <div className="flex flex-col gap-[3px] overflow-hidden w-[95%] pl-2 xl:pl-3">
-          {data.length > 0 ? (
-            data.slice(0, 3).map((d, i) => (
-              <div key={d.name} className="flex items-center gap-1.5 w-full text-[8px] leading-none" title={`${d.name}: ${d.pct}%`}>
-                <div className="w-1.5 h-1.5 rounded-sm flex-shrink-0" style={{ backgroundColor: colors[i % colors.length] }} />
-                <span className="truncate text-slate-400 font-medium">{d.name}</span>
-              </div>
-            ))
-          ) : (
-            <span className="text-[8px] text-slate-600 text-center w-full">-</span>
-          )}
-          
-          {/* Indikator jika ada lebih dari 3 item */}
-          {data.length > 3 && (
-            <div className="text-[7px] text-slate-600 font-medium italic text-left pl-3">
-              +{data.length - 3} lainnya
+      {/* LEGENDA DI BAWAH (ALIGN KIRI TAPI SECARA BLOK DITENGAHKAN) */}
+      <div className="flex w-full justify-center flex-1 overflow-y-auto custom-scrollbar pb-1">
+        <div className="flex flex-col gap-1 w-fit">
+          {data.length > 0 ? data.map((d, i) => (
+            <div key={d.name} className="flex items-center gap-1.5 text-[8px] xl:text-[9px] leading-none justify-start" title={`${d.name}: ${d.pct}% (${d.count} Site)`}>
+              <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: colors[i % colors.length] }} />
+              <span className="truncate text-slate-300 font-semibold max-w-[70px] xl:max-w-[85px] text-left">{d.name}</span>
             </div>
+          )) : (
+            <span className="text-[9px] text-slate-600 italic text-center">No Data</span>
           )}
         </div>
       </div>
@@ -389,7 +382,7 @@ export default function App() {
     else if (selProv) key = selProv;
 
     if (!key) {
-      map.current.flyTo({ center: [118.0, -2.5], zoom: 4.5, duration: 1500 });
+      map.current.flyTo({ center: [118.0, -5.0], zoom: 4.5, duration: 1500 });
       return;
     }
 
@@ -559,10 +552,9 @@ export default function App() {
     }), 'bottom-right');
 
     const loadLayers = () => {
-      // ... (Isi fungsi loadLayers Anda biarkan saja sama persis seperti sebelumnya) ...
+      // 1. Pastikan Source Batas Desa ada
       if (!map.current.getSource('batas-desa')) {
         const baseUrl = window.location.href.split('#')[0].replace(/\/$/, '') + '/';
-
         map.current.addSource('batas-desa', { 
           type: 'vector', 
           url: `pmtiles://${baseUrl}batas_administrasi.pmtiles` 
@@ -577,34 +569,100 @@ export default function App() {
         });
       }
 
-      if (!map.current.getSource('titik-site')) {
-        map.current.addSource('titik-site', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-        map.current.addLayer({
-          id: 'titik-site-layer', type: 'circle', source: 'titik-site',
-          paint: {
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 4, 12, 10],
-            'circle-color': ['match', ['get', 'status_link'], 'AKTIF', '#10b981', 'TIDAK AKTIF', '#ef4444', '#3b82f6'],
-            'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a'
+      // 2. Pastikan Source AKTIF ada sebelum menambah layer-nya
+      if (!map.current.getSource('titik-site-aktif')) {
+        map.current.addSource('titik-site-aktif', { 
+          type: 'geojson', data: { type: 'FeatureCollection', features: [] },
+          cluster: true, clusterMaxZoom: 14, clusterRadius: 50
+        });
+        
+        map.current.addLayer({ id: 'clusters-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['has', 'point_count'], paint: { 'circle-color': '#10b981', 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
+        map.current.addLayer({ // Angka di dalam Cluster Aktif
+          id: 'cluster-count-aktif', type: 'symbol', source: 'titik-site-aktif', filter: ['has', 'point_count'],
+          layout: { 
+            'text-field': '{point_count_abbreviated}', 
+            'text-font': ['Roboto Mono Bold', 'Open Sans Bold', 'Arial Unicode MS Bold'], // Memanggil font bold & mono
+            'text-size': 13, // Diperbesar sedikit agar presisi
+            'text-letter-spacing': 0.05, // Memberi jarak agar mirip font monospace
+            'text-allow-overlap': true,     
+            'text-ignore-placement': true   
+          },
+          paint: { 
+            'text-color': '#0f172a',
+            'text-halo-color': 'rgba(16, 185, 129, 0.8)', 
+            'text-halo-width': 1
           }
         });
+        map.current.addLayer({ id: 'unclustered-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 11], 'circle-color': '#10b981', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
       }
+
+      // 3. Pastikan Source TIDAK AKTIF ada sebelum menambah layer-nya
+      if (!map.current.getSource('titik-site-tidak-aktif')) {
+        map.current.addSource('titik-site-tidak-aktif', { 
+          type: 'geojson', data: { type: 'FeatureCollection', features: [] },
+          cluster: true, clusterMaxZoom: 14, clusterRadius: 40
+        });
+
+        map.current.addLayer({ id: 'clusters-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'], paint: { 'circle-color': '#ef4444', 'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 50, 24], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
+        map.current.addLayer({ // Angka di dalam Cluster Tidak Aktif
+          id: 'cluster-count-tidak-aktif', type: 'symbol', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'],
+          layout: { 
+            'text-field': '{point_count_abbreviated}', 
+            'text-font': ['Roboto Mono Bold', 'Open Sans Bold', 'Arial Unicode MS Bold'], // Memanggil font bold & mono
+            'text-size': 12, 
+            'text-letter-spacing': 0.05, // Memberi jarak agar mirip font monospace
+            'text-allow-overlap': true,     
+            'text-ignore-placement': true   
+          },
+          paint: { 
+            'text-color': '#ffffff',
+            'text-halo-color': 'rgba(239, 68, 68, 0.8)', 
+            'text-halo-width': 1
+          }
+        });
+        map.current.addLayer({ id: 'unclustered-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 9], 'circle-color': '#ef4444', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
+      }
+      
       setStyleLoaded(Date.now());
     };
 
     map.current.on('load', loadLayers);
     map.current.on('style.load', loadLayers);
 
-    map.current.on('click', 'titik-site-layer', (e) => {
-      if (e.features.length > 0) {
-        setClickedSite(e.features[0].properties);
-        setClickedRegion(null); 
-        setIsDetailOpen(true);  
-      }
+    // A. Interaksi Klik Titik Tunggal (Buka Panel Detail)
+    const unclusteredLayers = ['unclustered-aktif', 'unclustered-tidak-aktif'];
+    unclusteredLayers.forEach(layer => {
+      map.current.on('click', layer, (e) => {
+        if (e.features.length > 0) {
+          setClickedSite(e.features[0].properties);
+          setClickedRegion(null); 
+          setIsDetailOpen(true);  
+        }
+      });
     });
 
+    // B. Interaksi Klik Cluster (Animasi Zoom Otomatis)
+    const clusterLayers = ['clusters-aktif', 'clusters-tidak-aktif'];
+    clusterLayers.forEach(layer => {
+      map.current.on('click', layer, (e) => {
+        const features = map.current.queryRenderedFeatures(e.point, { layers: [layer] });
+        const clusterId = features[0].properties.cluster_id;
+        const sourceId = layer === 'clusters-aktif' ? 'titik-site-aktif' : 'titik-site-tidak-aktif';
+        
+        map.current.getSource(sourceId).getClusterExpansionZoom(
+          clusterId,
+          (err, zoom) => {
+            if (err) return;
+            map.current.easeTo({ center: features[0].geometry.coordinates, zoom: zoom });
+          }
+        );
+      });
+    });
+
+    // C. Interaksi Klik Wilayah Administrasi (Hindari bentrok jika menutupi titik)
     map.current.on('click', 'batas-desa-fill', (e) => {
-      const titikFeatures = map.current.queryRenderedFeatures(e.point, { layers: ['titik-site-layer'] });
-      if (titikFeatures.length > 0) return;
+      const titikFeatures = map.current.queryRenderedFeatures(e.point, { layers: [...unclusteredLayers, ...clusterLayers] });
+      if (titikFeatures.length > 0) return; // Batalkan jika yang ter-klik ternyata titik/cluster
 
       if (e.features.length > 0) {
         setClickedRegion(e.features[0].properties);
@@ -613,10 +671,16 @@ export default function App() {
       }
     });
 
+    // D. Kursor Berubah Menjadi Pointer (Tangan Menunjuk)
     map.current.on('mousemove', (e) => {
-      const features = map.current.queryRenderedFeatures(e.point, { layers: ['titik-site-layer', 'batas-desa-fill'] });
-      if (features.length > 0) { map.current.getCanvas().style.cursor = 'pointer'; } 
-      else { map.current.getCanvas().style.cursor = ''; }
+      if (!map.current.getLayer('unclustered-aktif') || !map.current.getLayer('batas-desa-fill')) return;
+      try {
+        const features = map.current.queryRenderedFeatures(e.point, { 
+          layers: [...unclusteredLayers, ...clusterLayers, 'batas-desa-fill'] 
+        });
+        if (features.length > 0) { map.current.getCanvas().style.cursor = 'pointer'; } 
+        else { map.current.getCanvas().style.cursor = ''; }
+      } catch (err) {}
     });
 
     setMapReady(true);
@@ -637,8 +701,32 @@ export default function App() {
 
   useEffect(() => {
     if (mapReady && map.current) {
-      const source = map.current.getSource('titik-site');
-      if (source) source.setData({ type: 'FeatureCollection', features: filteredFeatures });
+      const sourceAktif = map.current.getSource('titik-site-aktif');
+      const sourceTidakAktif = map.current.getSource('titik-site-tidak-aktif');
+      
+      if (sourceAktif && sourceTidakAktif) {
+        // Pisahkan data sebelum disalurkan ke peta
+        const dataAktif = filteredFeatures.filter(f => f.properties.status_link === 'AKTIF');
+        const dataTidakAktif = filteredFeatures.filter(f => f.properties.status_link !== 'AKTIF');
+        
+        // TITIK GAIB (DUMMY) DI KOORDINAT [0, 0] UNTUK MENCEGAH CRASH MESIN CLUSTER
+        const dummyPoint = {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [0, 0] },
+          properties: { status_link: 'DUMMY' }
+        };
+
+        // Jika datanya kosong, suapi mesin cluster dengan Titik Gaib agar tidak ngambek
+        sourceAktif.setData({ 
+          type: 'FeatureCollection', 
+          features: dataAktif.length > 0 ? dataAktif : [dummyPoint] 
+        });
+        
+        sourceTidakAktif.setData({ 
+          type: 'FeatureCollection', 
+          features: dataTidakAktif.length > 0 ? dataTidakAktif : [dummyPoint] 
+        });
+      }
     }
   }, [filteredFeatures, mapReady, styleLoaded]);
 
@@ -1011,8 +1099,11 @@ export default function App() {
 
       {/* LACI INFORMASI DETAIL */}
       {/* Ketinggian disesuaikan menjadi h-fit agar elastis mengikuti kontennya yang kini ringkas */}
-      <div className={`absolute top-1/2 -translate-y-1/2 left-0 z-30 flex items-center transition-transform duration-300 ease-in-out ${isDetailOpen ? 'translate-x-0' : '-translate-x-[22rem]'}`}>
-        <div className="w-[22rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-br-2xl border-y border-r border-emerald-500/40 shadow-[20px_0_30px_rgba(0,0,0,0.5)] h-fit max-h-[70vh] overflow-y-auto pointer-events-auto flex flex-col custom-scrollbar">
+      <div className={`absolute top-[40%] -translate-y-1/2 left-0 z-30 flex items-center transition-transform duration-300 ease-in-out ${isDetailOpen ? 'translate-x-0' : '-translate-x-[22rem]'}`}>
+        
+        {/* PERUBAHAN 2: max-h-[70vh] diubah menjadi max-h-[60vh] agar laci tidak terlalu memanjang ke bawah */}
+        <div className="w-[22rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-br-2xl border-y border-r border-emerald-500/40 shadow-[20px_0_30px_rgba(0,0,0,0.5)] h-fit max-h-[60vh] overflow-y-auto pointer-events-auto flex flex-col custom-scrollbar">
+          
           <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-3 flex items-center gap-2 flex-shrink-0">
             <span className="text-base">📋</span> Panel Informasi Detail
           </h2>
@@ -1148,7 +1239,7 @@ export default function App() {
       </div>
 
       {/* LACI FILTER HIERARKI MENGGUNAKAN CUSTOM SELECT */}
-      <div className={`absolute top-1/2 -translate-y-1/2 right-0 z-30 flex flex-row-reverse items-center transition-transform duration-300 ease-in-out ${isHierarchyOpen ? 'translate-x-0' : 'translate-x-[20rem]'}`}>
+      <div className={`absolute top-[47.5%] -translate-y-1/2 right-0 z-30 flex flex-row-reverse items-center transition-transform duration-300 ease-in-out ${isHierarchyOpen ? 'translate-x-0' : 'translate-x-[20rem]'}`}>
         <div className="w-[20rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-bl-2xl border-y border-l border-emerald-500/40 shadow-[-20px_0_30px_rgba(0,0,0,0.5)] h-fit max-h-[55vh] pointer-events-auto flex flex-col">
           <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-4 flex items-center gap-2"><span className="text-base">🎛️</span> Filter Hierarki Spasial</h2>
           
@@ -1184,53 +1275,50 @@ export default function App() {
       </div>
 
       {/* ==========================================================
-          5 KARTU BAWAH (LAYOUT 50:50 LEBAR PROPORSIONAL)
+          5 KARTU BAWAH (PROPORSI BARU: 1/3 KIRI, 2/3 KANAN, TINGGI RATA)
           ========================================================== */}
-      {/* PERUBAHAN 1: bottom-4 diganti menjadi bottom-8 agar naik ke atas */}
-      <div className="absolute bottom-12 left-4 right-4 z-10 pointer-events-none">
+      <div className="absolute bottom-10 left-4 right-4 z-10 pointer-events-none">
         
-        {/* PERUBAHAN 2: lg:h-[120px] diganti lg:h-[140px] dan tambah items-stretch */}
-        <div className="flex flex-col lg:flex-row gap-4 pointer-events-auto h-auto lg:h-[140px] w-full items-stretch">
+        {/* TINGGI 210px, menggunakan flex agar semua anak (kiri & kanan) tingginya sama */}
+        <div className="flex flex-row gap-3 xl:gap-4 pointer-events-auto h-[230px] w-full items-stretch">
           
-          {/* SISI KIRI: 50% Layar (Dibagi 3 Kartu Kecil) */}
-          <div className="flex-1 w-full lg:w-1/2 grid grid-cols-3 gap-3 h-full">
-            {/* PERUBAHAN 3: Tambah h-full di akhir class kartu */}
-            <div onClick={() => setSelectedModal('total')} className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
+          {/* SISI KIRI: MENGGUNAKAN FLEX AGAR TINGGINYA MENGIKUTI SISI KANAN */}
+          <div className="w-1/3 flex gap-3 h-full">
+            <div onClick={() => setSelectedModal('total')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
               <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-blue-400 transition leading-tight">1. Total Site</div>
-              <div className="flex items-baseline justify-between mt-1">
-                <span className="text-xl xl:text-3xl font-bold font-mono text-white">{metrics.total}</span>
-                <span className="text-[10px] text-slate-500 group-hover:text-slate-300 hidden xl:block">Tabel Lengkap ↗</span>
+              <div className="flex flex-col mt-auto">
+                <span className="text-4xl xl:text-5xl font-bold font-mono text-white leading-none mb-1">{metrics.total}</span>
+                <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
               </div>
             </div>
 
-            <div onClick={() => setSelectedModal('online')} className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-emerald-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
+            <div onClick={() => setSelectedModal('online')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-emerald-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
               <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-emerald-400 transition leading-tight">2. Online Site</div>
-              <div className="flex items-baseline justify-between mt-1">
-                <div className="flex items-baseline gap-1 xl:gap-2">
-                  <span className="text-xl xl:text-3xl font-bold font-mono text-emerald-400">{metrics.online}</span>
-                  <span className="text-[10px] xl:text-xs font-mono text-emerald-500/70">({metrics.onlinePct}%)</span>
-                </div>
-                <span className="text-[10px] text-slate-500 group-hover:text-slate-300 hidden xl:block">Tabel Lengkap ↗</span>
+              <div className="flex flex-col mt-auto">
+                <span className="text-4xl xl:text-5xl font-bold font-mono text-emerald-400 leading-none mb-1">{metrics.online}</span>
+                <span className="text-[10px] font-mono text-emerald-500/80 font-bold mb-1">({metrics.onlinePct}%)</span>
+                <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
               </div>
             </div>
 
-            <div onClick={() => setSelectedModal('offline')} className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-red-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
+            <div onClick={() => setSelectedModal('offline')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-red-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
               <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-red-400 transition leading-tight">3. Offline Site</div>
-              <div className="flex items-baseline justify-between mt-1">
-                <div className="flex items-baseline gap-1 xl:gap-2">
-                  <span className="text-xl xl:text-3xl font-bold font-mono text-red-400">{metrics.offline}</span>
-                  <span className="text-[10px] xl:text-xs font-mono text-red-500/70">({metrics.offlinePct}%)</span>
-                </div>
-                <span className="text-[10px] text-slate-500 group-hover:text-slate-300 hidden xl:block">Tabel Lengkap ↗</span>
+              <div className="flex flex-col mt-auto">
+                <span className="text-4xl xl:text-5xl font-bold font-mono text-red-400 leading-none mb-1">{metrics.offline}</span>
+                <span className="text-[10px] font-mono text-red-500/80 font-bold mb-1">({metrics.offlinePct}%)</span>
+                <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
               </div>
             </div>
           </div>
 
-          {/* SISI KANAN: 50% Layar (Dibagi 2 Kartu Lebih Besar) */}
-          <div className="flex-1 w-full lg:w-1/2 grid grid-cols-2 gap-3 h-full">
-            <div className="bg-slate-900/80 backdrop-blur-md p-2 px-3 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between group relative overflow-visible z-10 h-full">
-              <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-tight">4. Data Summary</div>
-              <div className="flex justify-between items-start gap-1 flex-1 mt-1">
+          {/* SISI KANAN: 2/3 LAYAR */}
+          <div className="w-2/3 flex gap-3 xl:gap-4 h-full">
+            
+            {/* CARD 4 (SUMMARY) */}
+            <div className="w-2/3 bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col group relative overflow-visible z-10 h-full">
+              <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-tight mb-2">4. Data Summary</div>
+              {/* UBAH overflow-hidden MENJADI overflow-visible DI BARIS BAWAH INI */}
+              <div className="flex justify-between items-start flex-1 w-full h-full overflow-visible">
                  <DonutStat title="Tipe Koneksi" data={summaryData.tipe} />
                  <DonutStat title="Provider" data={summaryData.provider} />
                  <DonutStat title="Struktur" data={summaryData.struktur} />
@@ -1238,8 +1326,8 @@ export default function App() {
               </div>
             </div>
 
-            {/* SINGLE SLIDER CARD */}
-            <div className="bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between relative group z-0 h-full">
+            {/* CARD 5 (SLIDER) */}
+            <div className="w-1/3 bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between relative group z-0 h-full">
               <div className="flex justify-between items-start">
                 <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-tight mt-0.5">5. Filter Waktu</div>
                 <CustomSelect 
@@ -1252,16 +1340,19 @@ export default function App() {
                 />
               </div>
               
-              <div className="flex flex-col mt-auto pb-1">
-                {/* Custom Single Range Slider */}
+              <div className="flex-1 flex flex-col items-center justify-center my-2">
+                <span className="text-3xl xl:text-4xl font-mono font-bold text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                  {uniqueMonths.length > 0 ? activeMonths[0] : 'N/A'}
+                </span>
+                <span className="text-[9px] text-slate-500 uppercase tracking-widest mt-1 font-semibold">Periode Aktif</span>
+              </div>
+              
+              <div className="flex flex-col w-full">
                 <div className="relative h-1.5 bg-slate-800 rounded-lg mt-1 w-full flex items-center">
-                  {/* Track Aktif (Bar warna hijau dari ujung kiri ke titik bulat) */}
                   <div 
-                    className="absolute h-full bg-emerald-500 rounded-lg pointer-events-none transition-all duration-100"
+                    className="absolute h-full bg-emerald-500 rounded-lg pointer-events-none transition-all duration-100 shadow-[0_0_8px_rgba(16,185,129,0.8)]"
                     style={{ width: `${((selectedMonth - 1) / 11) * 100}%` }}
                   />
-                  
-                  {/* Slider Input Utama */}
                   <input 
                     type="range" min="1" max="12" value={selectedMonth}
                     onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
@@ -1271,7 +1362,6 @@ export default function App() {
                   />
                 </div>
                 
-                {/* Legenda Angka Bulan */}
                 <div className="flex justify-between text-[9px] text-slate-500 mt-3 font-mono px-1">
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
                     <span 
@@ -1284,8 +1374,8 @@ export default function App() {
                 </div>
               </div>
             </div>
+
           </div>
-          
         </div>
       </div>
 
