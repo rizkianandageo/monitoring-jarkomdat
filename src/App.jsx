@@ -193,10 +193,9 @@ const TrendChart = ({ data }) => {
 // ==========================================================
 // KOMPONEN: MINI DONUT CHART (PIE CHART) DENGAN LEGENDA
 // ==========================================================
-const DonutStat = ({ title, data }) => {
+const DonutStat = ({ title, data, onPieClick, isActive }) => {
   const colors = ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ef4444', '#a855f7'];
   let cumulative = 0;
-  
   const gradient = data.map((d, i) => {
     const start = cumulative;
     cumulative += parseFloat(d.pct);
@@ -204,16 +203,14 @@ const DonutStat = ({ title, data }) => {
   }).join(', ');
 
   return (
-    <div className="flex flex-col items-center w-1/4 mt-[-4px]">
-      <h4 className="text-[10px] uppercase tracking-wider text-slate-500 font-bold text-center h-6 leading-tight flex items-center justify-center">{title}</h4>
-      
+    <div className={`flex flex-col items-center w-1/4 mt-[-8px] cursor-pointer transition-all duration-300 ${!isActive ? 'blur-[2px] opacity-30 scale-95' : 'blur-0 opacity-100 scale-100'}`} onClick={() => onPieClick({ title, data })}>
+      <h4 className="text-[9px] xl:text-[10px] uppercase tracking-wider text-slate-500 font-bold text-center h-6 leading-tight flex items-center justify-center">{title}</h4>
       <div 
-        /* UKURAN LINGKARAN DIPERBESAR (w-14 h-14) */
-        className="relative w-16 h-16 mt-1 mb-2 flex items-center justify-center rounded-full cursor-help hover:scale-110 transition-transform shadow-[0_0_10px_rgba(0,0,0,0.5)] group/chart flex-shrink-0" 
+        className="relative w-16 h-16 xl:w-16 xl:h-16 mb-3 flex items-center justify-center rounded-full transition-transform hover:scale-105 shadow-[0_0_10px_rgba(0,0,0,0.5)]" 
         style={{ background: `conic-gradient(${gradient || '#1e293b 0% 100%'})` }}
       >
          {/* UKURAN LUBANG DALAM DIPERBESAR (w-8 h-8) */}
-         <div className="w-8 h-8 bg-slate-900 rounded-full shadow-inner pointer-events-none" />
+         <div className="w-5 h-5 xl:w-6 xl:h-6 bg-slate-900 rounded-full shadow-inner" />
          
          {/* TOOLTIP HOVER */}
          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-max min-w-[130px] bg-slate-900/95 backdrop-blur-md border border-slate-700 p-2.5 rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.8)] opacity-0 group-hover/chart:opacity-100 transition-opacity duration-200 pointer-events-none z-50 text-[10px]">
@@ -284,6 +281,8 @@ export default function App() {
   const [selKab, setSelKab] = useState('');
   const [selKec, setSelKec] = useState('');
   const [selKel, setSelKel] = useState('');
+
+  const [selectedPieData, setSelectedPieData] = useState(null);
 
   useEffect(() => {
     fetch('./titik_site.geojson')
@@ -388,10 +387,29 @@ export default function App() {
 
     const bounds = areaBounds[key];
     if (bounds) {
-      const [minLng, minLat, maxLng, maxLat] = bounds;
-      map.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: 60, maxZoom: 14, duration: 1500 });
-    }
-  }, [selProv, selKab, selKec, selKel, mapReady, areaBounds]);
+    const [minLng, minLat, maxLng, maxLat] = bounds;
+
+    // Hitung padding dinamis berdasarkan panel yang terbuka
+    const CARD_BOTTOM = 260;        // tinggi card bawah + margin
+    const DETAIL_LEFT = isDetailOpen ? 370 : 60;    // lebar panel detail kiri
+    const HIERARCHY_RIGHT = isHierarchyOpen ? 340 : 60; // lebar panel hierarki kanan
+    const TOP = 80;                 // ruang untuk header atas
+
+    map.current.fitBounds(
+      [[minLng, minLat], [maxLng, maxLat]], 
+      { 
+        padding: {
+          top: TOP,
+          bottom: CARD_BOTTOM,
+          left: DETAIL_LEFT,
+          right: HIERARCHY_RIGHT
+        }, 
+        maxZoom: 14, 
+        duration: 1500 
+      }
+    );
+  }
+  }, [selProv, selKab, selKec, selKel, mapReady, areaBounds, isDetailOpen, isHierarchyOpen]);
 
   const filteredFeatures = useMemo(() => {
     if (!hasData) return [];
@@ -524,169 +542,111 @@ export default function App() {
   }, [filteredFeatures]);
 
   useEffect(() => {
-    // 1. TAMBAHKAN BARIS INI: Tahan proses jika belum login atau kontainer peta belum ada
+    // 1. Tahan proses jika belum login atau kontainer peta belum ada
     if (!isLoggedIn || !mapContainer.current) return;
     
-    if (map.current) return;
-
-    const styles = {
-      dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-      osm: {
-        version: 8,
-        sources: { 'osm-tiles': { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OSM' } },
-        layers: [{ id: 'osm-layer', type: 'raster', source: 'osm-tiles' }]
-      }
-    };
-
-    map.current = new maplibregl.Map({
-      container: mapContainer.current,
-      style: styles[currentBasemap], 
-      center: [118.0, -2.5],
-      zoom: 4.5,
-      attributionControl: false // 1. Matikan info teks panjang bawaan pabrik
-    });
-
-    // 2. Tambahkan info kontrol baru yang otomatis ter-minimize (hanya ikon 'i')
-    map.current.addControl(new maplibregl.AttributionControl({
-      compact: true
-    }), 'bottom-right');
-
-    const loadLayers = () => {
-      // 1. Pastikan Source Batas Desa ada
-      if (!map.current.getSource('batas-desa')) {
-        const baseUrl = window.location.href.split('#')[0].replace(/\/$/, '') + '/';
-        map.current.addSource('batas-desa', { 
-          type: 'vector', 
-          url: `pmtiles://${baseUrl}batas_administrasi.pmtiles` 
-        });
-        map.current.addLayer({
-          id: 'batas-desa-fill', type: 'fill', source: 'batas-desa', 'source-layer': 'batas_administrasi_clean',
-          paint: { 'fill-color': '#111827', 'fill-opacity': currentBasemap === 'dark' ? 0.55 : 0.25 }
-        });
-        map.current.addLayer({
-          id: 'batas-desa-line', type: 'line', source: 'batas-desa', 'source-layer': 'batas_administrasi_clean',
-          paint: { 'line-color': currentBasemap === 'dark' ? '#334155' : '#64748b', 'line-width': 0.2, 'line-opacity': 0.6 }
-        });
-      }
-
-      // 2. Pastikan Source AKTIF ada sebelum menambah layer-nya
-      if (!map.current.getSource('titik-site-aktif')) {
-        map.current.addSource('titik-site-aktif', { 
-          type: 'geojson', data: { type: 'FeatureCollection', features: [] },
-          cluster: true, clusterMaxZoom: 14, clusterRadius: 50
-        });
-        
-        map.current.addLayer({ id: 'clusters-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['has', 'point_count'], paint: { 'circle-color': '#10b981', 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
-        map.current.addLayer({ // Angka di dalam Cluster Aktif
-          id: 'cluster-count-aktif', type: 'symbol', source: 'titik-site-aktif', filter: ['has', 'point_count'],
-          layout: { 
-            'text-field': '{point_count_abbreviated}', 
-            'text-font': ['Roboto Mono Bold', 'Open Sans Bold', 'Arial Unicode MS Bold'], // Memanggil font bold & mono
-            'text-size': 13, // Diperbesar sedikit agar presisi
-            'text-letter-spacing': 0.05, // Memberi jarak agar mirip font monospace
-            'text-allow-overlap': true,     
-            'text-ignore-placement': true   
-          },
-          paint: { 
-            'text-color': '#0f172a',
-            'text-halo-color': 'rgba(16, 185, 129, 0.8)', 
-            'text-halo-width': 1
-          }
-        });
-        map.current.addLayer({ id: 'unclustered-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 11], 'circle-color': '#10b981', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
-      }
-
-      // 3. Pastikan Source TIDAK AKTIF ada sebelum menambah layer-nya
-      if (!map.current.getSource('titik-site-tidak-aktif')) {
-        map.current.addSource('titik-site-tidak-aktif', { 
-          type: 'geojson', data: { type: 'FeatureCollection', features: [] },
-          cluster: true, clusterMaxZoom: 14, clusterRadius: 40
-        });
-
-        map.current.addLayer({ id: 'clusters-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'], paint: { 'circle-color': '#ef4444', 'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 50, 24], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
-        map.current.addLayer({ // Angka di dalam Cluster Tidak Aktif
-          id: 'cluster-count-tidak-aktif', type: 'symbol', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'],
-          layout: { 
-            'text-field': '{point_count_abbreviated}', 
-            'text-font': ['Roboto Mono Bold', 'Open Sans Bold', 'Arial Unicode MS Bold'], // Memanggil font bold & mono
-            'text-size': 12, 
-            'text-letter-spacing': 0.05, // Memberi jarak agar mirip font monospace
-            'text-allow-overlap': true,     
-            'text-ignore-placement': true   
-          },
-          paint: { 
-            'text-color': '#ffffff',
-            'text-halo-color': 'rgba(239, 68, 68, 0.8)', 
-            'text-halo-width': 1
-          }
-        });
-        map.current.addLayer({ id: 'unclustered-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 9], 'circle-color': '#ef4444', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
-      }
-      
-      setStyleLoaded(Date.now());
-    };
-
-    map.current.on('load', loadLayers);
-    map.current.on('style.load', loadLayers);
-
-    // A. Interaksi Klik Titik Tunggal (Buka Panel Detail)
-    const unclusteredLayers = ['unclustered-aktif', 'unclustered-tidak-aktif'];
-    unclusteredLayers.forEach(layer => {
-      map.current.on('click', layer, (e) => {
-        if (e.features.length > 0) {
-          setClickedSite(e.features[0].properties);
-          setClickedRegion(null); 
-          setIsDetailOpen(true);  
+    // 2. Bungkus inisialisasi di dalam kondisi jika map belum dibuat
+    if (!map.current) {
+      const styles = {
+        dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+        osm: {
+          version: 8,
+          sources: { 'osm-tiles': { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OSM' } },
+          layers: [{ id: 'osm-layer', type: 'raster', source: 'osm-tiles' }]
         }
-      });
-    });
+      };
 
-    // B. Interaksi Klik Cluster (Animasi Zoom Otomatis)
-    const clusterLayers = ['clusters-aktif', 'clusters-tidak-aktif'];
-    clusterLayers.forEach(layer => {
-      map.current.on('click', layer, (e) => {
-        const features = map.current.queryRenderedFeatures(e.point, { layers: [layer] });
-        const clusterId = features[0].properties.cluster_id;
-        const sourceId = layer === 'clusters-aktif' ? 'titik-site-aktif' : 'titik-site-tidak-aktif';
-        
-        map.current.getSource(sourceId).getClusterExpansionZoom(
-          clusterId,
-          (err, zoom) => {
+      map.current = new maplibregl.Map({
+        container: mapContainer.current,
+        style: styles[currentBasemap], 
+        center: [118.0, -2.5],
+        zoom: 4.5,
+        attributionControl: false
+      });
+
+      map.current.addControl(new maplibregl.AttributionControl({
+        compact: true
+      }), 'bottom-right');
+
+      const loadLayers = () => {
+        if (!map.current.getSource('batas-desa')) {
+          const baseUrl = window.location.href.split('#')[0].replace(/\/$/, '') + '/';
+          map.current.addSource('batas-desa', { 
+            type: 'vector', 
+            url: `pmtiles://${baseUrl}batas_administrasi.pmtiles` 
+          });
+          map.current.addLayer({ id: 'batas-desa-fill', type: 'fill', source: 'batas-desa', 'source-layer': 'batas_administrasi_clean', paint: { 'fill-color': '#111827', 'fill-opacity': currentBasemap === 'dark' ? 0.55 : 0.25 } });
+          map.current.addLayer({ id: 'batas-desa-line', type: 'line', source: 'batas-desa', 'source-layer': 'batas_administrasi_clean', paint: { 'line-color': currentBasemap === 'dark' ? '#334155' : '#64748b', 'line-width': 0.2, 'line-opacity': 0.6 } });
+        }
+
+        if (!map.current.getSource('titik-site-aktif')) {
+          map.current.addSource('titik-site-aktif', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, cluster: true, clusterMaxZoom: 14, clusterRadius: 50 });
+          map.current.addLayer({ id: 'clusters-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['has', 'point_count'], paint: { 'circle-color': '#10b981', 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
+          map.current.addLayer({ id: 'cluster-count-aktif', type: 'symbol', source: 'titik-site-aktif', filter: ['has', 'point_count'], layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 12, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': 'rgba(16, 185, 129, 0.8)', 'text-halo-width': 1 } });
+          map.current.addLayer({ id: 'unclustered-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 11], 'circle-color': '#10b981', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
+        }
+
+        if (!map.current.getSource('titik-site-tidak-aktif')) {
+          map.current.addSource('titik-site-tidak-aktif', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, cluster: true, clusterMaxZoom: 14, clusterRadius: 40 });
+          map.current.addLayer({ id: 'clusters-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'], paint: { 'circle-color': '#ef4444', 'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 50, 24], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
+          map.current.addLayer({ id: 'cluster-count-tidak-aktif', type: 'symbol', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'], layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 11, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(239, 68, 68, 0.8)', 'text-halo-width': 1 } });
+          map.current.addLayer({ id: 'unclustered-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 9], 'circle-color': '#ef4444', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
+        }
+        setStyleLoaded(Date.now());
+      };
+
+      map.current.on('load', loadLayers);
+      map.current.on('style.load', loadLayers);
+
+      // (Sisa kode interaksi klik unclustered, cluster, mousemove tetap dibiarkan berada di sini)
+      const unclusteredLayers = ['unclustered-aktif', 'unclustered-tidak-aktif'];
+      unclusteredLayers.forEach(layer => {
+        map.current.on('click', layer, (e) => {
+          if (e.features.length > 0) { setClickedSite(e.features[0].properties); setClickedRegion(null); setIsDetailOpen(true); }
+        });
+      });
+
+      const clusterLayers = ['clusters-aktif', 'clusters-tidak-aktif'];
+      clusterLayers.forEach(layer => {
+        map.current.on('click', layer, (e) => {
+          const features = map.current.queryRenderedFeatures(e.point, { layers: [layer] });
+          const clusterId = features[0].properties.cluster_id;
+          const sourceId = layer === 'clusters-aktif' ? 'titik-site-aktif' : 'titik-site-tidak-aktif';
+          map.current.getSource(sourceId).getClusterExpansionZoom(clusterId, (err, zoom) => {
             if (err) return;
             map.current.easeTo({ center: features[0].geometry.coordinates, zoom: zoom });
-          }
-        );
-      });
-    });
-
-    // C. Interaksi Klik Wilayah Administrasi (Hindari bentrok jika menutupi titik)
-    map.current.on('click', 'batas-desa-fill', (e) => {
-      const titikFeatures = map.current.queryRenderedFeatures(e.point, { layers: [...unclusteredLayers, ...clusterLayers] });
-      if (titikFeatures.length > 0) return; // Batalkan jika yang ter-klik ternyata titik/cluster
-
-      if (e.features.length > 0) {
-        setClickedRegion(e.features[0].properties);
-        setClickedSite(null); 
-        setIsDetailOpen(true); 
-      }
-    });
-
-    // D. Kursor Berubah Menjadi Pointer (Tangan Menunjuk)
-    map.current.on('mousemove', (e) => {
-      if (!map.current.getLayer('unclustered-aktif') || !map.current.getLayer('batas-desa-fill')) return;
-      try {
-        const features = map.current.queryRenderedFeatures(e.point, { 
-          layers: [...unclusteredLayers, ...clusterLayers, 'batas-desa-fill'] 
+          });
         });
-        if (features.length > 0) { map.current.getCanvas().style.cursor = 'pointer'; } 
-        else { map.current.getCanvas().style.cursor = ''; }
-      } catch (err) {}
-    });
+      });
 
-    setMapReady(true);
+      map.current.on('click', 'batas-desa-fill', (e) => {
+        const titikFeatures = map.current.queryRenderedFeatures(e.point, { layers: [...unclusteredLayers, ...clusterLayers] });
+        if (titikFeatures.length > 0) return;
+        if (e.features.length > 0) { setClickedRegion(e.features[0].properties); setClickedSite(null); setIsDetailOpen(true); }
+      });
+
+      map.current.on('mousemove', (e) => {
+        if (!map.current.getLayer('unclustered-aktif') || !map.current.getLayer('batas-desa-fill')) return;
+        try {
+          const features = map.current.queryRenderedFeatures(e.point, { layers: [...unclusteredLayers, ...clusterLayers, 'batas-desa-fill'] });
+          if (features.length > 0) { map.current.getCanvas().style.cursor = 'pointer'; } else { map.current.getCanvas().style.cursor = ''; }
+        } catch (err) {}
+      });
+
+      setMapReady(true);
+    }
+
+    // ======================================================================
+    // 3. TAMBAHKAN BLOK RETURN CLEANUP INI (DI PALING BAWAH EFFECT SEBELUM GUNTING DEPENDENSI)
+    // ======================================================================
+    return () => {
+      if (map.current) {
+        map.current.remove(); // Menghancurkan instance canvas peta & WebGL Context sampai akar-akarnya
+        map.current = null;   // Me-reset referensi objek menjadi kosong kembali
+        setMapReady(false);   // Mematikan flag kesiapan peta
+      }
+    };
     
-  // 2. UBAH BAGIAN DEPENDENSI INI (DI BARIS PALING BAWAH USE-EFFECT): 
-  // Pastikan `isLoggedIn` dimasukkan ke dalam kurung siku
   }, [isLoggedIn]);
 
   useEffect(() => {
@@ -882,75 +842,122 @@ export default function App() {
     localStorage.removeItem('jarkomdat_session');
   };
 
-  // Jika belum login, render halaman login terlebih dahulu
+  // Jika belum login, render halaman login dengan layout Split 50-50 & Ornamen Keren
   if (!isLoggedIn) {
     return (
-      <div className="w-screen h-screen bg-slate-950 flex items-center justify-center font-sans antialiased relative overflow-hidden">
-        {/* Ornamen latar belakang partikel cahaya neon */}
-        <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-emerald-500/5 blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-sky-500/5 blur-[120px] pointer-events-none" />
+      <div className="w-screen h-screen flex bg-slate-950 font-sans antialiased overflow-hidden relative">
         
-        {/* Kartu Box Login */}
-        <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-md border border-slate-800 p-8 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] border-t-4 border-t-emerald-500 flex flex-col items-center z-10">
-          
-          {/* Logo Kemendagri */}
-          <img src="./kemendagri.svg" alt="Logo Kemendagri" className="h-20 w-20 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.2)] mb-4" />
-          
-          {/* Judul Sistem */}
-          <h1 className="text-sm font-bold tracking-[0.2em] text-emerald-400 text-center uppercase drop-shadow-md">
-            JARKOMDAT MONITORING SYSTEM
-          </h1>
-          <p className="text-[10px] text-slate-500 font-medium tracking-wide mt-1 mb-8 uppercase">
-            Kementerian Dalam Negeri Republik Indonesia
-          </p>
+        {/* ==============================================================================
+            SISI KIRI (50%): Gambar Ilustrasi & Judul Utama
+            ============================================================================== */}
+        <div 
+          className="w-1/2 h-full bg-slate-900 border-r border-slate-800 relative bg-cover bg-center overflow-hidden group"
+          // --- 👇👇👇 GANTI URL GAMBAR DI SINI 👇👇👇 ---
+          style={{ backgroundImage: "url('./stadia-maps.png')" }}
+          // URL Contoh di atas adalah gambar teknis sirkuit. Silakan ganti dengan aset gambar WebGIS Anda.
+        >
+            {/* Overlay Warna Gelap di atas gambar agar teks terbaca */}
+            <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-[1px] group-hover:backdrop-blur-0 transition-all duration-500"></div>
+            
+            {/* Ornamen Grid Teknis di sisi Kiri */}
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgcmVjdD0iMCAwIDIwIDIwIiBmaWxsPSJub25lIj48cGF0aCBkPSJNMjAgMEgwVjIwSDIwVjBaTTUgNUgxNVYxNUg1VjVaIiBmaWxsPSIjMTcxNzE3IiBmaWxsLW9wYWNpdHk9IjAuMiIvPjwvc3ZnPg==')] opacity-30 pointer-events-none" />
 
-          {/* Form Input */}
-          <form onSubmit={handleLoginSubmit} className="w-full space-y-4">
-            <div>
-              <label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block mb-1.5">Username</label>
-              <input 
-                type="text" 
-                placeholder="Masukkan username..." 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-semibold focus:outline-none focus:border-emerald-500 transition shadow-inner"
-                required
-              />
+            {/* Konten Teks di Sisi Kiri */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 w-full max-w-lg px-12 pointer-events-none">
+              <div className="w-16 h-1.5 bg-emerald-500 mb-6 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.8)] mx-auto"></div>
+              <h1 className="text-5xl font-extrabold tracking-tighter text-white uppercase leading-none drop-shadow-2xl">
+                JARKOMDAT <br/>
+                <span className="text-emerald-400">MONITORING SYSTEM</span>
+              </h1>
+              {/* Deskripsi dihilangkan di sini sesuai permintaan */}
             </div>
 
-            <div>
-              <label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block mb-1.5">Password</label>
-              <input 
-                type="password" 
-                placeholder="Masukkan password..." 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 font-semibold focus:outline-none focus:border-emerald-500 transition shadow-inner"
-                required
-              />
+            {/* Ornamen Sudut Teknis Kiri Bawah */}
+            <div className="absolute bottom-6 left-6 text-[10px] font-mono text-slate-600 uppercase tracking-widest z-10 flex items-center gap-2">
+                <div className="w-8 h-[1px] bg-slate-700"></div>
+                Integrated Geospatial Network Intelligence
             </div>
+        </div>
 
-            {/* Pesan Error */}
-            {loginError && (
-              <div className="bg-red-500/10 border border-red-500/30 p-2.5 rounded-lg text-[11px] text-red-400 font-medium text-center animate-pulse">
-                ⚠️ {loginError}
+        {/* ==============================================================================
+            SISI KANAN (50%): Form Login & Ornamen Glow
+            ============================================================================== */}
+        <div className="w-1/2 h-full bg-slate-900/50 flex items-center justify-center relative p-8">
+          
+          {/* ORNAMEN 1: Radial Gradient Glow Pojok Kanan Atas (Emerald) */}
+          <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-emerald-950/20 rounded-full blur-[120px] pointer-events-none opacity-60" />
+          
+          {/* ORNAMEN 2: Radial Gradient Glow Pojok Kiri Bawah (Sky Blue) */}
+          <div className="absolute bottom-[-15%] left-[-10%] w-[400px] h-[400px] bg-sky-950/15 rounded-full blur-[100px] pointer-events-none opacity-50" />
+
+          {/* ORNAMEN 3: Garis Teknis Vertikal di sebelah Kiri Form */}
+          <div className="absolute top-1/4 bottom-1/4 left-10 w-[1px] bg-slate-800 flex flex-col justify-between items-center py-2 pointer-events-none">
+            <div className="w-2 h-2 rounded-full bg-emerald-500/50 animate-pulse"></div>
+            <div className="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
+            <div className="w-1.5 h-1.5 rounded-full bg-slate-700"></div>
+            <div className="w-2 h-2 rounded-full bg-emerald-500/50 animate-pulse"></div>
+          </div>
+
+          {/* Kartu Box Login (Existing content wrapped) */}
+          <div className="w-full max-w-sm bg-slate-900/80 backdrop-blur-lg border border-slate-800 p-9 rounded-3xl shadow-[0_30px_70px_rgba(0,0,0,0.7)] border-t-4 border-t-emerald-500 z-10 relative overflow-hidden group/card">
+              
+              {/* Ornamen Grid Halus di dalam kartu */}
+              <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiIHZpZXdCb3g9IjAgMCA4IDgiPgo8ZyBmaWxsPSIjMWUxZTFlIiBmaWxsLW9wYWNpdHk9IjAuNSI+CjxjaXJjbGUgY3g9IjEiIGN5PSIxIiByPSIxIi8+CjwvZz4KPC9zdmc+')] opacity-20 pointer-events-none" />
+
+              {/* Existing Logo & Title */}
+              <div className="flex flex-col items-center mb-8 relative z-10">
+                <img src="./kemendagri.svg" alt="Logo Kemendagri" className="h-16 w-16 object-contain drop-shadow-[0_0_15px_rgba(16,185,129,0.3)] mb-3 transition-transform group-hover/card:scale-110 duration-300" />
+                <h2 className="text-[11px] font-bold tracking-[0.25em] text-white uppercase text-center drop-shadow-md">Akses Masuk</h2>
               </div>
-            )}
-
-            {/* Tombol Masuk */}
-            <button 
-              type="submit"
-              className="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs uppercase tracking-widest py-2.5 rounded-lg transition-colors cursor-pointer shadow-[0_4px_15px_rgba(16,185,129,0.2)] mt-2"
-            >
-              Masuk ke Sistem
-            </button>
-          </form>
-
-          {/* Catatan Kaki Hak Cipta */}
-          <div className="text-[9px] text-slate-600 font-mono mt-8 text-center uppercase tracking-wider">
-            Secure Authentication v1.0
+              
+              {/* Existing Form with enhanced input styles */}
+              <form onSubmit={handleLoginSubmit} className="w-full space-y-5 relative z-10">
+                  <div>
+                      <label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block mb-1.5">Username</label>
+                      <input 
+                          type="text" 
+                          placeholder="Masukkan username..." 
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-xs text-slate-200 font-semibold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition shadow-inner"
+                          required
+                      />
+                  </div>
+                  <div>
+                      <label className="text-[10px] uppercase text-slate-400 font-bold tracking-wider block mb-1.5">Password</label>
+                      <input 
+                          type="password" 
+                          placeholder="Masukkan password..." 
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-3 text-xs text-slate-200 font-semibold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition shadow-inner"
+                          required
+                      />
+                  </div>
+                  
+                  {/* Existing Error Message */}
+                  {loginError && (
+                      <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg text-[11px] text-red-400 font-medium text-center animate-pulse">
+                          ⚠️ {loginError}
+                      </div>
+                  )}
+                  
+                  {/* Tombol Masuk dengan Efek Glow Hover */}
+                  <button 
+                      type="submit"
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold text-xs uppercase tracking-widest py-3 rounded-lg transition-all cursor-pointer shadow-[0_4px_15px_rgba(16,185,129,0.3)] mt-2 hover:shadow-[0_4px_25px_rgba(16,185,129,0.5)] active:scale-[0.98]"
+                  >
+                      Masuk ke Sistem
+                  </button>
+              </form>
+              
+              {/* Footer text */}
+              <div className="text-[9px] text-slate-600 font-mono mt-10 text-center uppercase tracking-wider relative z-10 border-t border-slate-800 pt-4">
+                  © 2026 KEMENDAGRI RI<br/>Secure Network Intelligence v1.0
+              </div>
           </div>
         </div>
+        
       </div>
     );
   }
@@ -1275,61 +1282,49 @@ export default function App() {
       </div>
 
       {/* ==========================================================
-          5 KARTU BAWAH (PROPORSI BARU: 1/3 KIRI, 2/3 KANAN, TINGGI RATA)
+          5 KARTU BAWAH (PROPORSI: TINGGI CARD 1-4 DITINGKATKAN)
           ========================================================== */}
       <div className="absolute bottom-10 left-4 right-4 z-10 pointer-events-none">
         
-        {/* TINGGI 210px, menggunakan flex agar semua anak (kiri & kanan) tingginya sama */}
-        <div className="flex flex-row gap-3 xl:gap-4 pointer-events-auto h-[230px] w-full items-stretch">
+        {/* Tinggi ditingkatkan menjadi 210px-230px untuk memberi ruang konten lebih banyak */}
+        <div className="flex flex-row gap-3 xl:gap-4 pointer-events-auto h-[210px] xl:h-[230px] w-full items-stretch">
           
-          {/* SISI KIRI: MENGGUNAKAN FLEX AGAR TINGGINYA MENGIKUTI SISI KANAN */}
-          <div className="w-1/3 flex gap-3 h-full">
-            <div onClick={() => setSelectedModal('total')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
-              <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-blue-400 transition leading-tight">1. Total Site</div>
-              <div className="flex flex-col mt-auto">
-                <span className="text-4xl xl:text-5xl font-bold font-mono text-white leading-none mb-1">{metrics.total}</span>
-                <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
-              </div>
-            </div>
-
-            <div onClick={() => setSelectedModal('online')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-emerald-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
-              <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-emerald-400 transition leading-tight">2. Online Site</div>
-              <div className="flex flex-col mt-auto">
-                <span className="text-4xl xl:text-5xl font-bold font-mono text-emerald-400 leading-none mb-1">{metrics.online}</span>
-                <span className="text-[18px] font-mono text-emerald-500/80 font-bold mb-1">({metrics.onlinePct}%)</span>
-                <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
-              </div>
-            </div>
-
-            <div onClick={() => setSelectedModal('offline')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-red-500/50 hover:bg-slate-900 transition flex flex-col justify-between group h-full">
-              <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-red-400 transition leading-tight">3. Offline Site</div>
-              <div className="flex flex-col mt-auto">
-                <span className="text-4xl xl:text-5xl font-bold font-mono text-red-400 leading-none mb-1">{metrics.offline}</span>
-                <span className="text-[18px] font-mono text-red-500/80 font-bold mb-1">({metrics.offlinePct}%)</span>
-                <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
-              </div>
-            </div>
-          </div>
-
-          {/* SISI KANAN: 2/3 LAYAR */}
-          <div className="w-2/3 flex gap-3 xl:gap-4 h-full">
+          {/* SISI KIRI (1/3 LAYAR): Flex Column */}
+          <div className="w-1/3 flex flex-col gap-3 h-full">
             
-            {/* CARD 4 (SUMMARY) */}
-            <div className="w-2/3 bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col group relative overflow-visible z-10 h-full">
-              <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-tight mb-2">4. Data Summary</div>
-              {/* UBAH overflow-hidden MENJADI overflow-visible DI BARIS BAWAH INI */}
-              <div className="flex justify-between items-start flex-1 w-full h-full overflow-visible">
-                 <DonutStat title="Tipe Koneksi" data={summaryData.tipe} />
-                 <DonutStat title="Provider" data={summaryData.provider} />
-                 <DonutStat title="Struktur" data={summaryData.struktur} />
-                 <DonutStat title="Bandwidth" data={summaryData.bandwidth} />
+            {/* BARIS ATAS: Card 1, 2, 3 (Ditingkatkan paddingnya) */}
+            <div className="flex gap-3 flex-1 min-h-0">
+              <div onClick={() => setSelectedModal('total')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-4 xl:p-5 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
+                <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-blue-400 transition leading-tight">1. Total Site</div>
+                <div className="flex flex-col mt-auto">
+                  <span className="text-2xl xl:text-3xl font-bold font-mono text-white leading-none mb-1.5">{metrics.total}</span>
+                  <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
+                </div>
+              </div>
+
+              <div onClick={() => setSelectedModal('online')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-4 xl:p-5 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-emerald-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
+                <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-emerald-400 transition leading-tight">2. Online Site</div>
+                <div className="flex flex-col mt-auto">
+                  <span className="text-2xl xl:text-3xl font-bold font-mono text-emerald-400 leading-none mb-1">{metrics.online}</span>
+                  <span className="text-[9px] xl:text-[10px] font-mono text-emerald-500/80 font-bold mb-1">({metrics.onlinePct}%)</span>
+                  <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
+                </div>
+              </div>
+
+              <div onClick={() => setSelectedModal('offline')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-4 xl:p-5 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-red-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
+                <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-red-400 transition leading-tight">3. Offline Site</div>
+                <div className="flex flex-col mt-auto">
+                  <span className="text-2xl xl:text-3xl font-bold font-mono text-red-400 leading-none mb-1">{metrics.offline}</span>
+                  <span className="text-[9px] xl:text-[10px] font-mono text-red-500/80 font-bold mb-1">({metrics.offlinePct}%)</span>
+                  <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
+                </div>
               </div>
             </div>
 
-            {/* CARD 5 (SLIDER) */}
-            <div className="w-1/3 bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between relative group z-0 h-full">
-              <div className="flex justify-between items-start">
-                <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-tight mt-0.5">5. Filter Waktu</div>
+            {/* BARIS BAWAH: Card 5 (Tinggi Tetap) */}
+            <div className="h-[90px] bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between relative group">
+              <div className="flex justify-between items-center">
+                <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-tight">5. Filter Waktu</div>
                 <CustomSelect 
                   value={selectedYear} 
                   onChange={setSelectedYear} 
@@ -1340,29 +1335,14 @@ export default function App() {
                 />
               </div>
               
-              <div className="flex-1 flex flex-col items-center justify-center my-2">
-                <span className="text-3xl xl:text-4xl font-mono font-bold text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                  {uniqueMonths.length > 0 ? activeMonths[0] : 'N/A'}
-                </span>
-                <span className="text-[9px] text-slate-500 uppercase tracking-widest mt-1 font-semibold">Periode Aktif</span>
-              </div>
-              
-              <div className="flex flex-col w-full">
+              <div className="flex flex-col w-full mt-auto">
                 <div className="relative h-1.5 bg-slate-800 rounded-lg mt-1 w-full flex items-center">
-                  <div 
-                    className="absolute h-full bg-emerald-500 rounded-lg pointer-events-none transition-all duration-100 shadow-[0_0_8px_rgba(16,185,129,0.8)]"
-                    style={{ width: `${((selectedMonth - 1) / 11) * 100}%` }}
-                  />
-                  <input 
-                    type="range" min="1" max="12" value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
-                    disabled={uniqueYears.length === 0}
-                    className="absolute w-full h-full appearance-none bg-transparent cursor-pointer z-20 
-                    [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-400 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(16,185,129,0.8)] hover:[&::-webkit-slider-thumb]:scale-125 hover:[&::-webkit-slider-thumb]:transition-transform"
-                  />
+                  <div className="absolute h-full bg-emerald-500 rounded-lg pointer-events-none transition-all duration-100 shadow-[0_0_8px_rgba(16,185,129,0.8)]" style={{ width: `${((selectedMonth - 1) / 11) * 100}%` }} />
+                  <input type="range" min="1" max="12" value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))} disabled={uniqueYears.length === 0} className="absolute w-full h-full appearance-none bg-transparent cursor-pointer z-20 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-400 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(16,185,129,0.8)] hover:[&::-webkit-slider-thumb]:scale-125 hover:[&::-webkit-slider-thumb]:transition-transform" />
                 </div>
                 
-                <div className="flex justify-between text-[9px] text-slate-500 mt-3 font-mono px-1">
+                {/* --- LEGEND ANGKA BULAN YANG HILANG KEMBALI DI SINI --- */}
+                <div className="flex justify-between text-[9px] text-slate-500 mt-2.5 font-mono px-1">
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
                     <span 
                       key={m} 
@@ -1376,6 +1356,45 @@ export default function App() {
             </div>
 
           </div>
+
+          {/* SISI KANAN: Menggunakan transisi lebar */}
+          <div className={`transition-all duration-500 ease-in-out ${selectedPieData ? 'w-1/2' : 'w-2/3'} h-full bg-slate-900/80 backdrop-blur-md p-4 xl:p-6 rounded-xl border border-slate-800 shadow-xl flex flex-col relative`}>
+            <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-4">4. Data Summary</div>
+            <div className="flex justify-between items-center flex-1 w-full overflow-visible">
+              <DonutStat title="Tipe Koneksi" data={summaryData.tipe} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Tipe Koneksi'} />
+              <DonutStat title="Provider" data={summaryData.provider} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Provider'} />
+              <DonutStat title="Struktur" data={summaryData.struktur} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Struktur'} />
+              <DonutStat title="Bandwidth" data={summaryData.bandwidth} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Bandwidth'} />
+            </div>
+          </div>
+
+          {/* CARD BARU (MUNCUL JIKA ADA DATA PIE YANG DIKLIK) */}
+          {selectedPieData && (
+            <div className="w-1/6 h-full bg-slate-900/90 backdrop-blur-lg p-4 rounded-xl border border-blue-500/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-[14px]  font-bold text-blue-400 uppercase">{selectedPieData.title}</h3>
+                <button onClick={() => setSelectedPieData(null)} className="text-slate-500 hover:text-white">✕</button>
+              </div>
+              <div className="flex flex-col gap-0.25 overflow-y-auto">
+                {selectedPieData.data.map((d, i) => {
+                  const colors = ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ef4444', '#a855f7'];
+                  const color = colors[i % colors.length];
+                  return (
+                    <div key={d.name} className="flex justify-between items-center border-b border-slate-800 pb-0 gap-2">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
+                        <span className="text-[12px] font-bold truncate" style={{ color }}>{d.name}</span>
+                      </div>
+                      <span className="text-[16px] font-mono font-bold flex-shrink-0 text-white">
+                        {d.count} <span style={{ color }} className="font-semibold">({d.pct}%)</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
