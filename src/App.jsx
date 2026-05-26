@@ -264,7 +264,7 @@ export default function App() {
   const [isHierarchyOpen, setIsHierarchyOpen] = useState(false); 
 
   const [selectedModal, setSelectedModal] = useState(null); 
-  const [currentBasemap, setCurrentBasemap] = useState('dark');
+  const [currentBasemap, setCurrentBasemap] = useState('osm');
   const [styleLoaded, setStyleLoaded] = useState(0);
 
   const [searchId, setSearchId] = useState('');
@@ -371,45 +371,99 @@ export default function App() {
     else if (level === 'kel') { setSelKel(value); }
   };
 
+  // useEffect 1: Hanya handle FLY TO saat hierarki berubah
   useEffect(() => {
     if (!mapReady || !map.current || Object.keys(areaBounds).length === 0) return;
-    
+
+    const CARD_BOTTOM = 260;
+    const DETAIL_LEFT = isDetailOpen ? 370 : 60;
+    const HIERARCHY_RIGHT = isHierarchyOpen ? 340 : 60;
+    const TOP = 80;
+    const padding = { top: TOP, bottom: CARD_BOTTOM, left: DETAIL_LEFT, right: HIERARCHY_RIGHT };
+
+    // Tidak ada hierarki aktif sama sekali → kembali ke nasional
+    if (!selProv) {
+      map.current.flyTo({ center: [118.0, -5.0], zoom: 4.5, duration: 1500 });
+      return;
+    }
+
+    // Hanya provinsi aktif, kabupaten di-reset → zoom ke provinsi
+    if (selProv && !selKab) {
+      const bounds = areaBounds[selProv];
+      if (bounds) {
+        const [minLng, minLat, maxLng, maxLat] = bounds;
+        map.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding, maxZoom: 14, duration: 1500 });
+      }
+      return;
+    }
+
+    // Provinsi + kabupaten aktif, kecamatan di-reset → zoom ke kabupaten
+    if (selProv && selKab && !selKec) {
+      const key = `${selProv}||${selKab}`;
+      const bounds = areaBounds[key];
+      if (bounds) {
+        const [minLng, minLat, maxLng, maxLat] = bounds;
+        map.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding, maxZoom: 14, duration: 1500 });
+      }
+      return;
+    }
+
+    // Provinsi + kabupaten + kecamatan aktif, kelurahan di-reset → zoom ke kecamatan
+    if (selProv && selKab && selKec && !selKel) {
+      const key = `${selProv}||${selKab}||${selKec}`;
+      const bounds = areaBounds[key];
+      if (bounds) {
+        const [minLng, minLat, maxLng, maxLat] = bounds;
+        map.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding, maxZoom: 14, duration: 1500 });
+      }
+      return;
+    }
+
+    // Semua level aktif → zoom ke kelurahan
+    if (selProv && selKab && selKec && selKel) {
+      const key = `${selProv}||${selKab}||${selKec}||${selKel}`;
+      const bounds = areaBounds[key];
+      if (bounds) {
+        const [minLng, minLat, maxLng, maxLat] = bounds;
+        map.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding, maxZoom: 14, duration: 1500 });
+      }
+      return;
+    }
+
+  }, [selProv, selKab, selKec, selKel, mapReady, areaBounds]);
+
+  // useEffect 2: Hanya update padding saat panel buka/tutup TANPA fly ulang
+  useEffect(() => {
+    if (!mapReady || !map.current || Object.keys(areaBounds).length === 0) return;
+
     let key = '';
     if (selKel) key = `${selProv}||${selKab}||${selKec}||${selKel}`;
     else if (selKec) key = `${selProv}||${selKab}||${selKec}`;
     else if (selKab) key = `${selProv}||${selKab}`;
     else if (selProv) key = selProv;
 
-    if (!key) {
-      map.current.flyTo({ center: [118.0, -5.0], zoom: 4.5, duration: 1500 });
-      return;
-    }
+    // Hanya jalankan fitBounds ulang jika ada hierarki aktif
+    if (!key) return;
 
     const bounds = areaBounds[key];
     if (bounds) {
-    const [minLng, minLat, maxLng, maxLat] = bounds;
+      const [minLng, minLat, maxLng, maxLat] = bounds;
 
-    // Hitung padding dinamis berdasarkan panel yang terbuka
-    const CARD_BOTTOM = 260;        // tinggi card bawah + margin
-    const DETAIL_LEFT = isDetailOpen ? 370 : 60;    // lebar panel detail kiri
-    const HIERARCHY_RIGHT = isHierarchyOpen ? 340 : 60; // lebar panel hierarki kanan
-    const TOP = 80;                 // ruang untuk header atas
+      const CARD_BOTTOM = 260;
+      const DETAIL_LEFT = isDetailOpen ? 370 : 60;
+      const HIERARCHY_RIGHT = isHierarchyOpen ? 340 : 60;
+      const TOP = 80;
 
-    map.current.fitBounds(
-      [[minLng, minLat], [maxLng, maxLat]], 
-      { 
-        padding: {
-          top: TOP,
-          bottom: CARD_BOTTOM,
-          left: DETAIL_LEFT,
-          right: HIERARCHY_RIGHT
-        }, 
-        maxZoom: 14, 
-        duration: 1500 
-      }
-    );
-  }
-  }, [selProv, selKab, selKec, selKel, mapReady, areaBounds, isDetailOpen, isHierarchyOpen]);
+      map.current.fitBounds(
+        [[minLng, minLat], [maxLng, maxLat]], 
+        { 
+          padding: { top: TOP, bottom: CARD_BOTTOM, left: DETAIL_LEFT, right: HIERARCHY_RIGHT }, 
+          maxZoom: 14, 
+          duration: 800 
+        }
+      );
+    }
+  }, [isDetailOpen, isHierarchyOpen]); // ← Hanya reaktif terhadap panel
 
   const filteredFeatures = useMemo(() => {
     if (!hasData) return [];
@@ -660,80 +714,159 @@ export default function App() {
   }, [currentBasemap, mapReady]);
 
   useEffect(() => {
-    if (mapReady && map.current) {
-      const sourceAktif = map.current.getSource('titik-site-aktif');
-      const sourceTidakAktif = map.current.getSource('titik-site-tidak-aktif');
-      
-      if (sourceAktif && sourceTidakAktif) {
-        // Pisahkan data sebelum disalurkan ke peta
-        const dataAktif = filteredFeatures.filter(f => f.properties.status_link === 'AKTIF');
-        const dataTidakAktif = filteredFeatures.filter(f => f.properties.status_link !== 'AKTIF');
-        
-        // TITIK GAIB (DUMMY) DI KOORDINAT [0, 0] UNTUK MENCEGAH CRASH MESIN CLUSTER
-        const dummyPoint = {
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [0, 0] },
-          properties: { status_link: 'DUMMY' }
-        };
+    // 1. Tahan jika peta belum siap atau style dasar belum termuat
+    if (!mapReady || !map.current || !styleLoaded) return;
 
-        // Jika datanya kosong, suapi mesin cluster dengan Titik Gaib agar tidak ngambek
-        sourceAktif.setData({ 
-          type: 'FeatureCollection', 
-          features: dataAktif.length > 0 ? dataAktif : [dummyPoint] 
-        });
-        
-        sourceTidakAktif.setData({ 
-          type: 'FeatureCollection', 
-          features: dataTidakAktif.length > 0 ? dataTidakAktif : [dummyPoint] 
-        });
-      }
+    // 2. Ambil wadah (source) permanen yang sudah kita buat di awal
+    const sourceAktif = map.current.getSource('titik-site-aktif');
+    const sourceTidakAktif = map.current.getSource('titik-site-tidak-aktif');
+    
+    if (sourceAktif && sourceTidakAktif) {
+      // 3. Saring datanya di belakang layar (Memory)
+      const dataAktif = filteredFeatures.filter(f => f.properties.status_link === 'AKTIF');
+      const dataTidakAktif = filteredFeatures.filter(f => f.properties.status_link !== 'AKTIF');
+      
+      // 4. Siapkan titik siluman (Dummy) untuk mencegah mesin cluster mogok jika data kosong
+      const dummyPoint = {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [0, 0] },
+        properties: { status_link: 'DUMMY' }
+      };
+
+      // 5. Suapkan (Inject) data sekaligus ke dalam wadah yang sudah ada!
+      // Mesin C++ WebGL MapLibre akan mengurus animasinya secara instan tanpa berkedip.
+      sourceAktif.setData({ 
+        type: 'FeatureCollection', 
+        features: dataAktif.length > 0 ? dataAktif : [dummyPoint] 
+      });
+      
+      sourceTidakAktif.setData({ 
+        type: 'FeatureCollection', 
+        features: dataTidakAktif.length > 0 ? dataTidakAktif : [dummyPoint] 
+      });
     }
   }, [filteredFeatures, mapReady, styleLoaded]);
 
   useEffect(() => {
-    if (!mapReady || !map.current || listProvinsi.length === 0) return;
+    if (!mapReady || !map.current || !styleLoaded || listProvinsi.length === 0) return;
 
-    let filterExp = null;
-    if (selKel) {
-      filterExp = ['all', ['==', ['get', 'nama_prop'], selProv], ['==', ['get', 'nama_kab'], selKab], ['==', ['get', 'nama_kec'], selKec], ['==', ['get', 'nama_kel'], selKel]];
-    } else if (selKec) {
-      filterExp = ['all', ['==', ['get', 'nama_prop'], selProv], ['==', ['get', 'nama_kab'], selKab], ['==', ['get', 'nama_kec'], selKec]];
-    } else if (selKab) {
-      filterExp = ['all', ['==', ['get', 'nama_prop'], selProv], ['==', ['get', 'nama_kab'], selKab]];
-    } else if (selProv) {
-      filterExp = ['==', ['get', 'nama_prop'], selProv];
-    }
+    const applyMapStyle = () => {
+      // ============================================
+      // MODE 1: FILTER HIERARKI AKTIF (manual select)
+      // ============================================
+      if (selProv || selKab || selKec || selKel) {
+        let filterExp = null;
+        if (selKel) {
+          filterExp = ['all', ['==', ['get', 'nama_prop'], selProv], ['==', ['get', 'nama_kab'], selKab], ['==', ['get', 'nama_kec'], selKec], ['==', ['get', 'nama_kel'], selKel]];
+        } else if (selKec) {
+          filterExp = ['all', ['==', ['get', 'nama_prop'], selProv], ['==', ['get', 'nama_kab'], selKab], ['==', ['get', 'nama_kec'], selKec]];
+        } else if (selKab) {
+          filterExp = ['all', ['==', ['get', 'nama_prop'], selProv], ['==', ['get', 'nama_kab'], selKab]];
+        } else if (selProv) {
+          filterExp = ['==', ['get', 'nama_prop'], selProv];
+        }
 
-    if (map.current.getLayer('batas-desa-fill')) map.current.setFilter('batas-desa-fill', filterExp);
-    if (map.current.getLayer('batas-desa-line')) map.current.setFilter('batas-desa-line', filterExp);
+        if (map.current.getLayer('batas-desa-fill')) map.current.setFilter('batas-desa-fill', filterExp);
+        if (map.current.getLayer('batas-desa-line')) map.current.setFilter('batas-desa-line', filterExp);
 
-    let targetProp = 'nama_prop';
-    let colorsList = listProvinsi;
+        let targetProp = 'nama_prop';
+        let colorsList = listProvinsi;
+        if (selKec) { targetProp = 'nama_kel'; colorsList = listKelurahan; }
+        else if (selKab) { targetProp = 'nama_kec'; colorsList = listKecamatan; }
+        else if (selProv) { targetProp = 'nama_kab'; colorsList = listKabupaten; }
 
-    if (selKec) {
-      targetProp = 'nama_kel';
-      colorsList = listKelurahan; 
-    } else if (selKab) {
-      targetProp = 'nama_kec';
-      colorsList = listKecamatan; 
-    } else if (selProv) {
-      targetProp = 'nama_kab';
-      colorsList = listKabupaten; 
-    }
-
-    if (colorsList.length > 0) {
-      const matchExpression = ['match', ['get', targetProp]];
-      colorsList.forEach((val, index) => {
-        const hue = (index * 137.5) % 360; 
-        matchExpression.push(val, `hsl(${hue}, 65%, 35%)`); 
-      });
-      matchExpression.push('rgba(0,0,0,0)');
-
-      if (map.current.getLayer('batas-desa-fill')) {
-        map.current.setPaintProperty('batas-desa-fill', 'fill-color', matchExpression);
+        if (colorsList.length > 0 && map.current.getLayer('batas-desa-fill')) {
+          const matchExpression = ['match', ['get', targetProp]];
+          colorsList.forEach((val, index) => {
+            const hue = (index * 137.5) % 360;
+            matchExpression.push(val, `hsl(${hue}, 65%, 35%)`);
+          });
+          matchExpression.push('rgba(0,0,0,0)');
+          map.current.setPaintProperty('batas-desa-fill', 'fill-color', matchExpression);
+        }
+        return;
       }
-    }
-  }, [mapReady, styleLoaded, selProv, selKab, selKec, selKel, listProvinsi, listKabupaten, listKecamatan, listKelurahan]);
+
+      // ============================================
+      // MODE 2: AUTO ZOOM (tidak ada hierarki aktif)
+      // ============================================
+      if (!map.current) return;
+      const zoom = map.current.getZoom();
+
+      // Reset filter
+      if (map.current.getLayer('batas-desa-fill')) map.current.setFilter('batas-desa-fill', null);
+      if (map.current.getLayer('batas-desa-line')) map.current.setFilter('batas-desa-line', null);
+
+      if (!map.current.getLayer('batas-desa-fill')) return;
+
+      if (zoom < 6) {
+        // LEVEL PROVINSI: match expression aman (hanya 38 provinsi)
+        const matchExpression = ['match', ['get', 'nama_prop']];
+        listProvinsi.forEach((val, index) => {
+          const hue = (index * 137.5) % 360;
+          matchExpression.push(val, `hsl(${hue}, 55%, 32%)`);
+        });
+        matchExpression.push('#1e293b');
+        map.current.setPaintProperty('batas-desa-fill', 'fill-color', matchExpression);
+
+      } else if (zoom < 8) {
+        // LEVEL KABUPATEN: match expression masih aman (±500 kabupaten)
+        const colorsList = [...new Set(Object.keys(areaBounds).map(k => k.split('||')[1]).filter(Boolean))];
+        const matchExpression = ['match', ['get', 'nama_kab']];
+        colorsList.forEach((val, index) => {
+          const hue = (index * 137.5) % 360;
+          matchExpression.push(val, `hsl(${hue}, 55%, 32%)`);
+        });
+        matchExpression.push('#1e293b');
+        map.current.setPaintProperty('batas-desa-fill', 'fill-color', matchExpression);
+
+      } else {
+        // LEVEL KECAMATAN & KELURAHAN
+        // Pakai step expression dengan palet 12 warna berdasarkan panjang nama
+        // Valid di MapLibre dan dihitung di GPU
+        const targetProp = zoom >= 10 ? 'nama_kel' : 'nama_kec';
+        const palette = [
+          '#1a4731', '#1a3a47', '#2d1a47', '#47261a',
+          '#1a4720', '#47421a', '#471a1a', '#1a4742',
+          '#3d471a', '#1a2847', '#471a3d', '#2a471a'
+        ];
+        map.current.setPaintProperty('batas-desa-fill', 'fill-color', [
+          'step',
+          ['%', ['length', ['coalesce', ['get', targetProp], '']], 12],
+          palette[0],
+          1, palette[1],
+          2, palette[2],
+          3, palette[3],
+          4, palette[4],
+          5, palette[5],
+          6, palette[6],
+          7, palette[7],
+          8, palette[8],
+          9, palette[9],
+          10, palette[10],
+          11, palette[11]
+        ]);
+      }
+    };
+
+    // Debounce zoom
+    let debounceTimer;
+    const debouncedApply = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(applyMapStyle, 200);
+    };
+
+    map.current.on('zoom', debouncedApply);
+
+    // Jalankan langsung saat mount / dependensi berubah
+    applyMapStyle();
+
+    return () => {
+      if (map.current) map.current.off('zoom', debouncedApply);
+      clearTimeout(debounceTimer);
+    };
+
+  }, [mapReady, styleLoaded, selProv, selKab, selKec, selKel, listProvinsi, listKabupaten, listKecamatan, listKelurahan, areaBounds]);
 
   const formatStruktur = (val) => {
     if (val === 'KAB-KOTA') return 'KABUPATEN / KOTA';
@@ -1005,7 +1138,7 @@ export default function App() {
           {/* TOMBOL LOGOUT BARU */}
           <button 
             onClick={handleLogout} 
-            className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-slate-950 p-1.5 px-3 rounded-xl text-xs font-bold tracking-wider transition-colors shadow-xl h-full flex items-center"
+            className="bg-red-500/50 border border-red-500/30 text-white-400 hover:bg-red-500 hover:text-slate-950 p-1.5 px-3 rounded-xl text-xs font-bold tracking-wider transition-colors shadow-xl h-full flex items-center"
             title="Keluar dari Sistem"
           >
             LOGOUT
@@ -1372,8 +1505,14 @@ export default function App() {
           {selectedPieData && (
             <div className="w-1/6 h-full bg-slate-900/90 backdrop-blur-lg p-4 rounded-xl border border-blue-500/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-[14px]  font-bold text-blue-400 uppercase">{selectedPieData.title}</h3>
-                <button onClick={() => setSelectedPieData(null)} className="text-slate-500 hover:text-white">✕</button>
+                <h3 className="text-[14px] font-bold text-blue-400 uppercase">{selectedPieData.title}</h3>
+                <button 
+                  onClick={() => setSelectedPieData(null)} 
+                  className="bg-red-500 hover:bg-red-600 text-white w-6 h-6 rounded-md flex items-center justify-center transition-all shadow-[0_0_10px_rgba(239,68,68,0.4)] active:scale-95"
+                  title="Tutup Panel"
+                >
+                  ✕
+                </button>
               </div>
               <div className="flex flex-col gap-0.25 overflow-y-auto">
                 {selectedPieData.data.map((d, i) => {
