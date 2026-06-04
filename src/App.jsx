@@ -248,9 +248,86 @@ const DonutStat = ({ title, data, onPieClick, isActive }) => {
   );
 };
 
+// ==========================================================
+// KOMPONEN BARU: GAUGE ZOOM LEVEL METER (KUNCIAN HIERARKI)
+// ==========================================================
+const ZoomGauge = ({ zoom, selProv, selKab, selKec, selKel }) => {
+  const levels = [
+    { name: 'NASIONAL' },
+    { name: 'PROVINSI' },
+    { name: 'KABUPATEN' },
+    { name: 'KECAMATAN' },
+    { name: 'DESA / KEL' }
+  ];
+
+  let activeIndex = 0;
+
+  // PRIORITAS 1: Jika Filter Hierarki Digunakan (Mengunci posisi indikator)
+  // Walaupun Yogyakarta area petanya kecil dan butuh zoom dalam, 
+  // indikator akan tetap dipaksa menunjuk ke "PROVINSI".
+  if (selKel) {
+    activeIndex = 4;
+  } else if (selKec) {
+    activeIndex = 3;
+  } else if (selKab) {
+    activeIndex = 2;
+  } else if (selProv) {
+    activeIndex = 1;
+  } 
+  // PRIORITAS 2: Jika Filter Kosong (Kembali mendeteksi scroll mouse)
+  else {
+    if (zoom >= 12) activeIndex = 4;
+    else if (zoom >= 10) activeIndex = 3;
+    else if (zoom >= 8) activeIndex = 2;
+    else if (zoom >= 6) activeIndex = 1;
+    else activeIndex = 0;
+  }
+
+  const currentLevel = levels[activeIndex].name;
+  
+  // Rumus persentase pengisian garis presisi 4 lompatan
+  const percentage = (activeIndex / (levels.length - 1)) * 100;
+
+  return (
+    <div className="bg-slate-900/95 backdrop-blur-xl py-1.5 px-3 rounded-lg border border-slate-700/80 shadow-[0_5px_15px_rgba(0,0,0,0.8)] flex flex-col items-center justify-center w-[100px] xl:w-[120px] relative pointer-events-none">
+      
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-4 bg-emerald-500/10 blur-[8px] rounded-full pointer-events-none" />
+
+      <div className="flex flex-col items-center mb-1.5 w-full relative z-10">
+        <span className="text-[5px] xl:text-[6px] font-bold uppercase tracking-[0.2em] text-slate-400 font-mono mb-0.5">
+          Zoom Level
+        </span>
+        <span className="text-[9px] xl:text-[10px] font-extrabold uppercase tracking-widest text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.8)] transition-all duration-300">
+          {currentLevel}
+        </span>
+      </div>
+
+      <div className="w-full relative z-10 flex items-center h-2">
+        <div className="absolute left-0 w-full h-[2px] bg-slate-800 rounded-full shadow-inner overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-sky-500 via-emerald-400 to-emerald-400 transition-all duration-500 ease-out"
+            style={{ width: `${percentage}%` }}
+          />
+        </div>
+
+        <div className="absolute left-0 w-full flex justify-between items-center px-[0px]">
+          {levels.map((_, i) => (
+            <div 
+              key={i} 
+              className={`w-1.5 h-1.5 rounded-full transition-colors duration-500 z-20 ${i <= activeIndex ? 'bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,1)]' : 'bg-slate-700'}`} 
+            />
+          ))}
+        </div>
+      </div>
+
+    </div>
+  );
+};
+
 export default function App() {
   const mapContainer = useRef(null);
   const map = useRef(null);
+  const areaBoundsRef = useRef({});
 
   // Cek apakah di memori browser sudah ada tiket login sebelumnya
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('jarkomdat_session') === 'true');
@@ -291,6 +368,7 @@ export default function App() {
   const [selKel, setSelKel] = useState('');
 
   const [selectedPieData, setSelectedPieData] = useState(null);
+  const [currentZoom, setCurrentZoom] = useState(4.5);
 
   useEffect(() => {
     fetch('./titik_site.geojson')
@@ -304,7 +382,10 @@ export default function App() {
 
     fetch('./bounds.json')
       .then((res) => res.json())
-      .then((data) => setAreaBounds(data))
+      .then((data) => {
+        setAreaBounds(data);
+        areaBoundsRef.current = data; // ← TAMBAHKAN INI
+      })
       .catch((err) => console.error("Gagal memuat koordinat poligon:", err));
   }, []);
 
@@ -613,6 +694,39 @@ export default function App() {
       bandwidth: countBy('bandwidth')
     };
   }, [filteredFeatures]);
+
+  // ==========================================================
+  // DATA CENTROID PROVINSI (Untuk Cluster Awal)
+  // ==========================================================
+  const provinceCentroids = useMemo(() => {
+    const provData = {};
+    
+    filteredFeatures.forEach(f => {
+      // Ambil nama provinsi dengan field yang tersedia
+      const prov = f.properties.nama_prop || f.properties.PROVINSI || f.properties.provinsi;
+      if (!prov) return;
+      
+      const [lng, lat] = f.geometry.coordinates;
+      if (!provData[prov]) {
+        provData[prov] = { count: 0, sumLng: 0, sumLat: 0 };
+      }
+      provData[prov].count += 1;
+      provData[prov].sumLng += lng;
+      provData[prov].sumLat += lat;
+    });
+
+    const features = Object.keys(provData).map(prov => {
+      const d = provData[prov];
+      return {
+        type: 'Feature',
+        properties: { provinsi: prov, count: d.count },
+        geometry: { type: 'Point', coordinates: [d.sumLng / d.count, d.sumLat / d.count] }
+      };
+    });
+
+    return { type: 'FeatureCollection', features };
+  }, [filteredFeatures]);
+
   // ==========================================================
   // EFEK PENYINKRON: Update data popup jika filter berubah
   // ==========================================================
@@ -672,22 +786,81 @@ export default function App() {
 
         if (!map.current.getSource('titik-site-aktif')) {
           map.current.addSource('titik-site-aktif', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, cluster: true, clusterMaxZoom: 14, clusterRadius: 50 });
-          map.current.addLayer({ id: 'clusters-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['has', 'point_count'], paint: { 'circle-color': '#10b981', 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
-          map.current.addLayer({ id: 'cluster-count-aktif', type: 'symbol', source: 'titik-site-aktif', filter: ['has', 'point_count'], layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 12, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': 'rgba(16, 185, 129, 0.8)', 'text-halo-width': 1 } });
-          map.current.addLayer({ id: 'unclustered-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 11], 'circle-color': '#10b981', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
+          map.current.addLayer({ id: 'clusters-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['has', 'point_count'], minzoom: 5.5, paint: { 'circle-color': '#10b981', 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
+          map.current.addLayer({ id: 'cluster-count-aktif', type: 'symbol', source: 'titik-site-aktif', filter: ['has', 'point_count'], minzoom: 5.5, layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 12, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': 'rgba(16, 185, 129, 0.8)', 'text-halo-width': 1 } });
+          map.current.addLayer({ id: 'unclustered-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['!', ['has', 'point_count']], minzoom: 5.5, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 11], 'circle-color': '#10b981', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
         }
 
         if (!map.current.getSource('titik-site-tidak-aktif')) {
           map.current.addSource('titik-site-tidak-aktif', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, cluster: true, clusterMaxZoom: 14, clusterRadius: 40 });
-          map.current.addLayer({ id: 'clusters-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'], paint: { 'circle-color': '#ef4444', 'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 50, 24], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
-          map.current.addLayer({ id: 'cluster-count-tidak-aktif', type: 'symbol', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'], layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 11, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(239, 68, 68, 0.8)', 'text-halo-width': 1 } });
-          map.current.addLayer({ id: 'unclustered-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['!', ['has', 'point_count']], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 9], 'circle-color': '#ef4444', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
+          map.current.addLayer({ id: 'clusters-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'], minzoom: 5.5, paint: { 'circle-color': '#ef4444', 'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 50, 24], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
+          map.current.addLayer({ id: 'cluster-count-tidak-aktif', type: 'symbol', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'], minzoom: 5.5, layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 11, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(239, 68, 68, 0.8)', 'text-halo-width': 1 } });
+          map.current.addLayer({ id: 'unclustered-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['!', ['has', 'point_count']], minzoom: 5.5, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 9], 'circle-color': '#ef4444', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
         }
-        setStyleLoaded(Date.now());
-      };
+          // LAYER BARU: CLUSTER PROVINSI (Hanya muncul saat Zoom < 5.5)
+        if (!map.current.getSource('province-centroids')) {
+          map.current.addSource('province-centroids', { type: 'geojson', data: provinceCentroids });
+          
+          map.current.addLayer({
+            id: 'province-clusters',
+            type: 'circle',
+            source: 'province-centroids',
+            maxzoom: 5.5, // Otomatis hilang jika di-zoom in
+            paint: {
+              'circle-color': '#0ea5e9', // Warna Sky Blue 
+              'circle-radius': 20,       // <-- DIUBAH: Ukuran disamakan semua menjadi 20px
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#0f172a'
+            }
+          });
+
+          map.current.addLayer({
+            id: 'province-cluster-count',
+            type: 'symbol',
+            source: 'province-centroids',
+            maxzoom: 5.5,
+            layout: { 
+              'text-field': '{count}',
+              'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'], 
+              'text-size': 14, // Sedikit dikecilkan agar pas di dalam lingkaran statis
+              'text-allow-overlap': true, 
+              'text-ignore-placement': true 
+            },
+            paint: { 'text-color': '#ffffff' }
+          });
+          
+          // Layer 'province-cluster-label' (Teks Nama Provinsi) SUDAH DIHAPUS dari sini
+        }
+          setStyleLoaded(Date.now());
+        };
 
       map.current.on('load', loadLayers);
       map.current.on('style.load', loadLayers);
+
+      map.current.on('click', 'province-clusters', (e) => {
+        const provName = e.features[0].properties.provinsi;
+
+        // Coba exact match dulu, lalu case-insensitive sebagai fallback
+        const boundsData = areaBoundsRef.current;
+        const matchedKey = Object.keys(boundsData).find(
+          k => k === provName || k.toUpperCase() === provName?.toUpperCase()
+        );
+
+        if (matchedKey && boundsData[matchedKey]) {
+          const [minLng, minLat, maxLng, maxLat] = boundsData[matchedKey];
+          map.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
+            padding: { top: 80, bottom: 260, left: 60, right: 60 },
+            maxZoom: 10,
+            duration: 1500
+          });
+        } else {
+          map.current.flyTo({ center: e.features[0].geometry.coordinates, zoom: 6.5, duration: 1500 });
+        }
+      });
+
+      // Kursor pointer saat di atas cluster provinsi
+      map.current.on('mouseenter', 'province-clusters', () => { map.current.getCanvas().style.cursor = 'pointer'; });
+      map.current.on('mouseleave', 'province-clusters', () => { map.current.getCanvas().style.cursor = ''; });
 
       // (Sisa kode interaksi klik unclustered, cluster, mousemove tetap dibiarkan berada di sini)
       const unclusteredLayers = ['unclustered-aktif', 'unclustered-tidak-aktif'];
@@ -697,16 +870,46 @@ export default function App() {
         });
       });
 
+      // ==========================================================
+      // INTERAKSI KLIK CLUSTER REGULER (Zoom ke area sebaran titik)
+      // ==========================================================
       const clusterLayers = ['clusters-aktif', 'clusters-tidak-aktif'];
       clusterLayers.forEach(layer => {
-        map.current.on('click', layer, (e) => {
+        map.current.on('click', layer, async (e) => {
           const features = map.current.queryRenderedFeatures(e.point, { layers: [layer] });
+          if (!features.length) return;
+
           const clusterId = features[0].properties.cluster_id;
+          const pointCount = features[0].properties.point_count;
           const sourceId = layer === 'clusters-aktif' ? 'titik-site-aktif' : 'titik-site-tidak-aktif';
-          map.current.getSource(sourceId).getClusterExpansionZoom(clusterId, (err, zoom) => {
-            if (err) return;
-            map.current.easeTo({ center: features[0].geometry.coordinates, zoom: zoom });
-          });
+
+          try {
+            const leafFeatures = await map.current.getSource(sourceId).getClusterLeaves(
+              clusterId, pointCount, 0
+            );
+
+            if (!leafFeatures || leafFeatures.length === 0) return;
+
+            let minLng = 180, minLat = 90, maxLng = -180, maxLat = -90;
+            leafFeatures.forEach(f => {
+              const [lng, lat] = f.geometry.coordinates;
+              if (lng < minLng) minLng = lng;
+              if (lat < minLat) minLat = lat;
+              if (lng > maxLng) maxLng = lng;
+              if (lat > maxLat) maxLat = lat;
+            });
+
+            if (minLng === maxLng && minLat === maxLat) {
+              map.current.flyTo({ center: [minLng, minLat], zoom: 14, duration: 1500 });
+            } else {
+              map.current.fitBounds(
+                [[minLng, minLat], [maxLng, maxLat]],
+                { padding: { top: 100, bottom: 280, left: 80, right: 80 }, maxZoom: 14, duration: 1500 }
+              );
+            }
+          } catch (err) {
+            console.error('getClusterLeaves error:', err);
+          }
         });
       });
 
@@ -739,6 +942,18 @@ export default function App() {
     };
     
   }, [isLoggedIn]);
+
+  // ==========================================================
+  // EFEK PENYINKRON: Update posisi Centroid Provinsi jika Filter Berubah
+  // ==========================================================
+  useEffect(() => {
+    if (mapReady && map.current) {
+      const provSource = map.current.getSource('province-centroids');
+      if (provSource) {
+        provSource.setData(provinceCentroids);
+      }
+    }
+  }, [provinceCentroids, mapReady]);
 
   useEffect(() => {
     if (map.current && mapReady) {
@@ -886,11 +1101,15 @@ export default function App() {
       }
     };
 
-    // Debounce zoom
+    // Debounce zoom (Ubah dari yang lama menjadi ini)
     let debounceTimer;
     const debouncedApply = () => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(applyMapStyle, 200);
+      debounceTimer = setTimeout(() => {
+        applyMapStyle();
+        // Update angka zoom untuk Gauge Meter!
+        if (map.current) setCurrentZoom(map.current.getZoom());
+      }, 200);
     };
 
     map.current.on('zoom', debouncedApply);
@@ -1163,9 +1382,18 @@ export default function App() {
 
       {/* SISI KANAN ATAS: BASEMAP & TREND CHART */}
       <div className="absolute top-4 right-4 z-10 pointer-events-none flex flex-col items-end gap-3">
-        {/* Kontainer baris atas untuk Basemap dan Logout */}
+        {/* Kontainer baris atas untuk Zoom, Basemap, dan Logout */}
         <div className="flex items-center gap-2 pointer-events-auto">
           
+          {/* GAUGE METER ZOOM LEVEL (PINDAHAN) */}
+          <ZoomGauge 
+            zoom={currentZoom} 
+            selProv={selProv}
+            selKab={selKab}
+            selKec={selKec}
+            selKel={selKel}
+          />
+
           {/* BASEMAP SWITCHER */}
           <div className="bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 shadow-xl flex gap-1">
             <button onClick={() => setCurrentBasemap('dark')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'dark' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Dark</button>
