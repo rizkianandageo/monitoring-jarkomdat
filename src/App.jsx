@@ -39,6 +39,20 @@ const getAVColorClass = (val) => {
   return 'text-red-500';                    // Merah (<50%)
 };
 
+// 5. FUNGSI NORMALISASI TIPE KONEKSI (Lebih Kuat)
+const normalizeTipeKoneksi = (val) => {
+  if (!val || String(val).trim() === '') return '-';
+  const upperVal = String(val).toUpperCase().trim();
+  
+  // Jika teks mengandung kata VSAT dan WIRELINE sekaligus (apapun urutannya)
+  if (upperVal.includes('VSAT') && upperVal.includes('WIRELINE')) {
+    return 'WIRELINE & VSAT';
+  }
+  
+  // Kembalikan dalam huruf kapital agar pasti seragam saat dijumlahkan
+  return upperVal; 
+};
+
 // ==========================================================
 // KOMPONEN: CUSTOM SINGLE SELECT DROPDOWN (TEMA SERAGAM POPOVER)
 // ==========================================================
@@ -65,7 +79,7 @@ const CustomSelect = ({ value, onChange, options, placeholder, disabled, classNa
         className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-300 shadow-inner flex justify-between items-center w-full text-left cursor-pointer hover:border-slate-600 transition"
       >
         <span className="truncate text-xs font-semibold pr-2">{currentLabel}</span>
-        <span className="text-[9px] text-slate-500 font-mono flex-shrink-0">{isOpen ? (menuUp ? '▼' : '▲') : (menuUp ? '▲' : '▼')}</span>
+        <span className="text-[11px] text-slate-500 font-mono flex-shrink-0">{isOpen ? (menuUp ? '▼' : '▲') : (menuUp ? '▲' : '▼')}</span>
       </button>
 
       {isOpen && (
@@ -133,9 +147,9 @@ const TrendChart = ({ data }) => {
 
   return (
     <div className="bg-slate-900/90 backdrop-blur-md p-4 rounded-xl border border-slate-800 shadow-xl w-[320px] pointer-events-auto group relative">
-       <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-2 flex justify-between">
+       <div className="text-[12px] uppercase font-bold tracking-wider text-slate-400 mb-2 flex justify-between">
          <span>TREND BULANAN AVAILABILITY</span>
-         <span className="text-emerald-400 font-mono font-bold drop-shadow-md">{data[data.length-1].avg.toFixed(2)}%</span>
+         <span className="text-sm text-emerald-400 font-mono font-bold drop-shadow-md">{data[data.length-1].avg.toFixed(2)}%</span>
        </div>
 
        <div className="relative">
@@ -151,7 +165,7 @@ const TrendChart = ({ data }) => {
                    {/* Lingkaran transparan besar agar kursor lebih mudah memicu hover */}
                    <circle cx={x} cy={y} r="15" fill="transparent" />
                    {/* Label Tiap Bulan */}
-                   <text x={x} y={height - 5} fontSize="9" fontWeight="bold" fill={isHovered ? "#34d399" : "#64748b"} textAnchor="middle" className="font-mono transition-colors duration-200 pointer-events-none">
+                   <text x={x} y={height - 5} fontSize="10" fontWeight="bold" fill={isHovered ? "#34d399" : "#64748b"} textAnchor="middle" className="font-mono transition-colors duration-200 pointer-events-none">
                      {d.month.split('/')[1]}
                    </text>
                  </g>
@@ -191,7 +205,7 @@ const TrendChart = ({ data }) => {
 };
 
 // ==========================================================
-// KOMPONEN: MINI DONUT CHART (PIE CHART) DENGAN LEGENDA
+// KOMPONEN: MINI DONUT CHART (PIE CHART) LEGENDA DI BAWAH TANPA SCROLL
 // ==========================================================
 const DonutStat = ({ title, data, onPieClick, isActive }) => {
   const colors = ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ef4444', '#a855f7'];
@@ -203,41 +217,33 @@ const DonutStat = ({ title, data, onPieClick, isActive }) => {
   }).join(', ');
 
   return (
-    <div className={`flex flex-col items-center w-1/4 mt-[-8px] cursor-pointer transition-all duration-300 ${!isActive ? 'blur-[2px] opacity-30 scale-95' : 'blur-0 opacity-100 scale-100'}`} onClick={() => onPieClick({ title, data })}>
-      <h4 className="text-[9px] xl:text-[10px] uppercase tracking-wider text-slate-500 font-bold text-center h-6 leading-tight flex items-center justify-center">{title}</h4>
+    <div className={`flex flex-col items-center flex-1 mt-[-8px] cursor-pointer transition-all duration-300 ${!isActive ? 'blur-[2px] opacity-30 scale-95' : 'blur-0 opacity-100 scale-100'}`} onClick={() => onPieClick({ title, data })}>
+      
+      {/* JUDUL */}
+      <h4 className="text-[10px] xl:text-[11px] uppercase tracking-wider text-slate-300 font-bold text-center h-auto leading-tight flex items-center justify-center mb-1.5">
+        {title}
+      </h4>
+      
+      {/* GRAFIK DONUT: Tooltip Hover sudah dihilangkan dari sini */}
       <div 
-        className="relative w-16 h-16 xl:w-16 xl:h-16 mb-3 flex items-center justify-center rounded-full transition-transform hover:scale-105 shadow-[0_0_10px_rgba(0,0,0,0.5)]" 
+        className="relative w-20 h-20 xl:w-24 xl:h-24 mb-3 flex items-center justify-center rounded-full transition-transform hover:scale-105 shadow-[0_0_15px_rgba(0,0,0,0.6)] flex-shrink-0" 
         style={{ background: `conic-gradient(${gradient || '#1e293b 0% 100%'})` }}
       >
-         {/* UKURAN LUBANG DALAM DIPERBESAR (w-8 h-8) */}
-         <div className="w-5 h-5 xl:w-6 xl:h-6 bg-slate-900 rounded-full shadow-inner" />
-         
-         {/* TOOLTIP HOVER */}
-         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-max min-w-[130px] bg-slate-900/95 backdrop-blur-md border border-slate-700 p-2.5 rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.8)] opacity-0 group-hover/chart:opacity-100 transition-opacity duration-200 pointer-events-none z-50 text-[10px]">
-           <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-solid border-t-slate-700 border-t-8 border-x-transparent border-x-8 border-b-0" />
-           <h3 className="text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800 pb-1 mb-1.5">{title} Details</h3>
-           {data.length > 0 ? data.map((d, i) => (
-             <div key={d.name} className="flex justify-between items-center gap-4 mb-1 last:mb-0">
-               <span className="font-semibold drop-shadow-md" style={{ color: colors[i % colors.length] }}>• {d.name}</span>
-               <span className="text-slate-300 font-mono font-medium">{d.count} <span className="text-slate-500 text-[9px]">({d.pct}%)</span></span>
-             </div>
-           )) : <div className="text-slate-500 text-center italic">Tidak ada data</div>}
-         </div>
+         <div className="w-6 h-6 xl:w-8 xl:h-8 bg-slate-900 rounded-full shadow-inner" />
       </div>
       
-      {/* LEGENDA DI BAWAH (ALIGN KIRI TAPI SECARA BLOK DITENGAHKAN) */}
-      <div className="flex w-full justify-center flex-1 overflow-y-auto custom-scrollbar pb-1">
-        <div className="flex flex-col gap-1 w-fit">
-          {data.length > 0 ? data.map((d, i) => (
-            <div key={d.name} className="flex items-center gap-1.5 text-[8px] xl:text-[9px] leading-none justify-start" title={`${d.name}: ${d.pct}% (${d.count} Site)`}>
-              <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: colors[i % colors.length] }} />
-              <span className="truncate text-slate-300 font-semibold max-w-[70px] xl:max-w-[85px] text-left">{d.name}</span>
-            </div>
-          )) : (
-            <span className="text-[9px] text-slate-600 italic text-center">No Data</span>
-          )}
-        </div>
+      {/* LEGENDA: Menggunakan Flex-Wrap agar menyebar ke bawah/samping tanpa perlu scroll */}
+      <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 w-full px-1">
+        {data.length > 0 ? data.map((d, i) => (
+          <div key={d.name} className="flex items-center gap-1.5 leading-none" title={`${d.name}: ${d.pct}% (${d.count} Site)`}>
+            <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: colors[i % colors.length] }} />
+            <span className="truncate text-slate-200 font-bold max-w-[60px] xl:max-w-[70px] text-[8px] xl:text-[9px]">{d.name}</span>
+          </div>
+        )) : (
+          <span className="text-[10px] text-red-400/80 font-bold italic tracking-wider mt-2">TIDAK ADA DATA</span>
+        )}
       </div>
+
     </div>
   );
 };
@@ -268,8 +274,10 @@ export default function App() {
   const [styleLoaded, setStyleLoaded] = useState(0);
 
   const [searchId, setSearchId] = useState('');
-  const [selectedType, setSelectedType] = useState('');
-  const [selectedStructure, setSelectedStructure] = useState('');
+  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const [selectedStructures, setSelectedStructures] = useState([]);
+  const [isStructureDropdownOpen, setIsStructureDropdownOpen] = useState(false);
 
   const [selectedProviders, setSelectedProviders] = useState([]);
   const [isProviderDropdownOpen, setIsProviderDropdownOpen] = useState(false);
@@ -328,7 +336,10 @@ export default function App() {
 
   const displayRange = `${selectedYear}/${String(selectedMonth).padStart(2, '0')}`;
 
-  const uniqueTypes = useMemo(() => [...new Set(rawData.map(f => f.properties.type_koneksi))].filter(Boolean).sort(), [rawData]);
+  const uniqueTypes = useMemo(() => {
+    const types = rawData.map(f => normalizeTipeKoneksi(f.properties.type_koneksi));
+    return [...new Set(types)].filter(Boolean).sort();
+  }, [rawData]);
   const uniqueStructures = useMemo(() => [...new Set(rawData.map(f => f.properties.STRUKTUR))].filter(Boolean).sort(), [rawData]);
 
   const uniqueProviders = useMemo(() => {
@@ -474,8 +485,15 @@ export default function App() {
       // Filter Multi-Month Range
       if (activeMonths.length > 0 && !activeMonths.includes(props.monthReportv2)) return false;
       
-      if (selectedType && props.type_koneksi !== selectedType) return false;
-      if (selectedStructure && props.STRUKTUR !== selectedStructure) return false;
+      const normalizedType = normalizeTipeKoneksi(props.type_koneksi);
+      
+      // Filter Tipe Koneksi (Multi-Select)
+      if (selectedTypes.length > 0) {
+        const normalizedType = normalizeTipeKoneksi(props.type_koneksi);
+        if (!selectedTypes.includes(normalizedType)) return false;
+      }
+      // Filter Struktur (Multi-Select)
+      if (selectedStructures.length > 0 && !selectedStructures.includes(props.STRUKTUR)) return false;
       
       if (selectedProviders.length > 0) {
         const pStr = props.Provider ? String(props.Provider).trim() : '';
@@ -501,7 +519,7 @@ export default function App() {
 
       return true;
     });
-  }, [rawData, searchId, selectedType, selectedProviders, selectedStructure, activeMonths, hasData, selProv, selKab, selKec, selKel]);
+  }, [rawData, searchId, selectedTypes, selectedProviders, selectedStructures, activeMonths, hasData, selProv, selKab, selKec, selKel]);
 
   const metrics = useMemo(() => {
     const total = filteredFeatures.length;
@@ -520,8 +538,14 @@ export default function App() {
     // Trendline tidak terpengaruh oleh slider range waktu, agar selalu menunjukkan seluruh tahun
     const spatialFiltered = rawData.filter(f => {
       const props = f.properties;
-      if (selectedType && props.type_koneksi !== selectedType) return false;
-      if (selectedStructure && props.STRUKTUR !== selectedStructure) return false;
+      const normalizedType = normalizeTipeKoneksi(props.type_koneksi);
+      // Filter Tipe Koneksi (Multi-Select)
+      if (selectedTypes.length > 0) {
+        const normalizedType = normalizeTipeKoneksi(props.type_koneksi);
+        if (!selectedTypes.includes(normalizedType)) return false;
+      } 
+      // Filter Struktur (Multi-Select)
+      if (selectedStructures.length > 0 && !selectedStructures.includes(props.STRUKTUR)) return false;
       
       if (selectedProviders.length > 0) {
         const pStr = props.Provider ? String(props.Provider).trim() : '';
@@ -554,7 +578,7 @@ export default function App() {
       month: m,
       avg: (grouped[m].sum / grouped[m].count) * 100
     }));
-  }, [rawData, selectedType, selectedStructure, selectedProviders, selProv, selKab, selKec, selKel]);
+  }, [rawData, selectedTypes, selectedStructures, selectedProviders, selProv, selKab, selKec, selKel]);
 
   const summaryData = useMemo(() => {
     const total = filteredFeatures.length;
@@ -579,21 +603,34 @@ export default function App() {
       return val;
     };
 
-    // FORMATTER BARU: Melebur tipe koneksi campuran menjadi WIRELINE
-    const formatTipeKoneksi = (val) => {
-      const upperVal = String(val).toUpperCase();
-      if (upperVal.includes('WIRELINE')) return 'WIRELINE';
-      if (upperVal.includes('VSAT')) return 'VSAT';
-      return val;
-    };
+    // FORMATTER TIPE KONEKSI (Terhubung ke normalizer di atas)
+    const formatTipeKoneksi = (val) => normalizeTipeKoneksi(val);
 
     return {
-      tipe: countBy('type_koneksi', formatTipeKoneksi), // Implementasi formatter di sini
+      tipe: countBy('type_koneksi', formatTipeKoneksi),
       provider: countBy('Provider'),
       struktur: countBy('STRUKTUR', formatStruktur),
       bandwidth: countBy('bandwidth')
     };
   }, [filteredFeatures]);
+  // ==========================================================
+  // EFEK PENYINKRON: Update data popup jika filter berubah
+  // ==========================================================
+  useEffect(() => {
+    setSelectedPieData((prevSnapshot) => {
+      if (!prevSnapshot) return null; // Abaikan jika popup sedang ditutup
+      
+      let updatedData = [];
+      // Teks di sini HARUS sama persis dengan title="..." pada DonutStat
+      if (prevSnapshot.title === 'Kategori Koneksi') updatedData = summaryData.tipe;
+      else if (prevSnapshot.title === 'Provider Utama') updatedData = summaryData.provider;
+      else if (prevSnapshot.title === 'Struktur') updatedData = summaryData.struktur;
+      else if (prevSnapshot.title === 'Kapasitas Bandwidth') updatedData = summaryData.bandwidth;
+      
+      // Kembalikan objek popup dengan data yang paling fresh!
+      return { title: prevSnapshot.title, data: updatedData };
+    });
+  }, [summaryData]);
 
   useEffect(() => {
     // 1. Tahan proses jika belum login atau kontainer peta belum ada
@@ -1166,16 +1203,65 @@ export default function App() {
 
         <div className={`relative z-20 pointer-events-auto transition-all duration-300 ease-out transform origin-top overflow-visible ${isFilterOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full absolute pointer-events-none'}`}>
           <div className="bg-slate-900/95 backdrop-blur-md p-3 px-6 rounded-b-xl border-x border-b border-emerald-500/40 shadow-2xl flex flex-wrap justify-center items-center gap-3 text-xs -mt-[1px]">
-            <input type="text" placeholder="Search ID/Name..." className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 w-44 text-slate-200 focus:outline-none focus:border-emerald-500 transition shadow-inner text-xs font-semibold" value={searchId} onChange={(e) => setSearchId(e.target.value)} />
             
-            <CustomSelect 
-              value={selectedType} 
-              onChange={setSelectedType} 
-              options={uniqueTypes} 
-              placeholder="Tipe Koneksi (All)"
-              className="w-40"
+            {/* 1. SEARCH INPUT */}
+            <input 
+              type="text" 
+              placeholder="Search ID/Name..." 
+              className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 w-44 text-slate-200 focus:outline-none focus:border-emerald-500 transition shadow-inner text-xs font-semibold" 
+              value={searchId} 
+              onChange={(e) => setSearchId(e.target.value)} 
             />
             
+            {/* 2. FILTER: TIPE KONEKSI (MULTI-SELECT BARU) */}
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
+                className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-300 shadow-inner flex justify-between items-center w-48 text-left cursor-pointer hover:border-slate-600 transition text-xs font-semibold"
+              >
+                <span className="truncate pr-2">
+                  {selectedTypes.length === 0 ? 'Tipe Koneksi (All)' : `Tipe Koneksi (${selectedTypes.length} Terpilih)`}
+                </span>
+                <span className="text-[9px] text-slate-500 font-mono flex-shrink-0">{isTypeDropdownOpen ? '▲' : '▼'}</span>
+              </button>
+
+              {isTypeDropdownOpen && (
+                <div className="absolute left-0 mt-1 w-52 bg-slate-900 border border-slate-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-2 z-50 max-h-60 overflow-y-auto border-t-2 border-t-emerald-500 custom-scrollbar">
+                  {uniqueTypes.map(t => {
+                    const isChecked = selectedTypes.includes(t);
+                    return (
+                      <label key={t} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-850 rounded cursor-pointer select-none text-slate-300 transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={isChecked}
+                          onChange={() => {
+                            if (isChecked) {
+                              setSelectedTypes(selectedTypes.filter(item => item !== t));
+                            } else {
+                              setSelectedTypes([...selectedTypes, t]);
+                            }
+                          }}
+                          className="accent-emerald-500 h-3.5 w-3.5 rounded border-slate-700 bg-slate-950 cursor-pointer"
+                        />
+                        <span className="text-xs font-semibold truncate" title={t}>{t}</span>
+                      </label>
+                    );
+                  })}
+                  {selectedTypes.length > 0 && (
+                    <button 
+                      type="button" 
+                      onClick={() => setSelectedTypes([])}
+                      className="w-full text-center text-[10px] text-red-400 hover:text-red-300 font-bold border-t border-slate-800 pt-2 mt-1.5 cursor-pointer"
+                    >
+                      ✕ Bersihkan Pilihan
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {/* 3. FILTER: PROVIDER (MULTI-SELECT LAMA YANG KEMBALI) */}
             <div className="relative">
               <button 
                 type="button"
@@ -1223,16 +1309,56 @@ export default function App() {
               )}
             </div>
 
-            <CustomSelect 
-              value={selectedStructure} 
-              onChange={setSelectedStructure} 
-              options={[
-                 ...strukturOrder.filter(s => uniqueStructures.includes(s)).map(s => ({ value: s, label: strukturDisplay[s] })),
-                 ...uniqueStructures.filter(s => !strukturOrder.includes(s) && s !== 'N/A' && s !== '').map(s => ({ value: s, label: s }))
-              ]} 
-              placeholder="Struktur (All)"
-              className="w-48"
-            />
+            {/* 4. FILTER: STRUKTUR (MULTI-SELECT BARU) */}
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={() => setIsStructureDropdownOpen(!isStructureDropdownOpen)}
+                className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-300 shadow-inner flex justify-between items-center w-48 text-left cursor-pointer hover:border-slate-600 transition text-xs font-semibold"
+              >
+                <span className="truncate pr-2">
+                  {selectedStructures.length === 0 ? 'Struktur (All)' : `Struktur (${selectedStructures.length} Terpilih)`}
+                </span>
+                <span className="text-[9px] text-slate-500 font-mono flex-shrink-0">{isStructureDropdownOpen ? '▲' : '▼'}</span>
+              </button>
+
+              {isStructureDropdownOpen && (
+                <div className="absolute left-0 mt-1 w-52 bg-slate-900 border border-slate-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-2 z-50 max-h-60 overflow-y-auto border-t-2 border-t-emerald-500 custom-scrollbar">
+                  {[
+                     ...strukturOrder.filter(s => uniqueStructures.includes(s)).map(s => ({ value: s, label: strukturDisplay[s] })),
+                     ...uniqueStructures.filter(s => !strukturOrder.includes(s) && s !== 'N/A' && s !== '').map(s => ({ value: s, label: s }))
+                  ].map(opt => {
+                    const isChecked = selectedStructures.includes(opt.value);
+                    return (
+                      <label key={opt.value} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-850 rounded cursor-pointer select-none text-slate-300 transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={isChecked}
+                          onChange={() => {
+                            if (isChecked) {
+                              setSelectedStructures(selectedStructures.filter(item => item !== opt.value));
+                            } else {
+                              setSelectedStructures([...selectedStructures, opt.value]);
+                            }
+                          }}
+                          className="accent-emerald-500 h-3.5 w-3.5 rounded border-slate-700 bg-slate-950 cursor-pointer"
+                        />
+                        <span className="text-xs font-semibold truncate" title={opt.label}>{opt.label}</span>
+                      </label>
+                    );
+                  })}
+                  {selectedStructures.length > 0 && (
+                    <button 
+                      type="button" 
+                      onClick={() => setSelectedStructures([])}
+                      className="w-full text-center text-[10px] text-red-400 hover:text-red-300 font-bold border-t border-slate-800 pt-2 mt-1.5 cursor-pointer"
+                    >
+                      ✕ Bersihkan Pilihan
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -1244,36 +1370,36 @@ export default function App() {
         {/* PERUBAHAN 2: max-h-[70vh] diubah menjadi max-h-[60vh] agar laci tidak terlalu memanjang ke bawah */}
         <div className="w-[22rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-br-2xl border-y border-r border-emerald-500/40 shadow-[20px_0_30px_rgba(0,0,0,0.5)] h-fit max-h-[60vh] overflow-y-auto pointer-events-auto flex flex-col custom-scrollbar">
           
-          <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-3 flex items-center gap-2 flex-shrink-0">
+          <h2 className="text-base font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-3 flex items-center gap-2 flex-shrink-0">
             <span className="text-base">📋</span> Panel Informasi Detail
           </h2>
           
           <div className="flex-1 overflow-y-auto pr-1">
             {clickedSite ? (
-              <div className="space-y-2.5 text-xs pb-2">
+              <div className="space-y-2.5 text-sm pb-2">
                 
                 {/* BARIS 1: Site Name & Site ID Berdampingan */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] uppercase text-slate-500 block font-semibold">Site Name</label>
-                    <p className="text-sm font-bold text-emerald-400 leading-tight truncate" title={clickedSite["NAMA SITE"] || clickedSite.text_site}>{clickedSite["NAMA SITE"] || clickedSite.text_site || '-'}</p>
+                    <label className="text-[11px] uppercase text-slate-500 block font-semibold">Site Name</label>
+                    <p className="text-base font-bold text-emerald-400 leading-tight truncate" title={clickedSite["NAMA SITE"] || clickedSite.text_site}>{clickedSite["NAMA SITE"] || clickedSite.text_site || '-'}</p>
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase text-slate-500 block font-semibold">Site ID</label>
-                    <p className="font-mono font-bold text-slate-200 text-sm truncate">{clickedSite.kodesite || '-'}</p>
+                    <label className="text-[11px] uppercase text-slate-500 block font-semibold">Site ID</label>
+                    <p className="font-mono font-bold text-slate-200 text-base truncate">{clickedSite.kodesite || '-'}</p>
                   </div>
                 </div>
                 
                 {/* BARIS 2: Availability & Struktur */}
                 <div className="grid grid-cols-2 gap-3 border-y border-slate-800/60 py-2.5 my-2 bg-slate-950/40 p-2 rounded">
                   <div>
-                    <label className="text-[10px] uppercase text-slate-500 block">Availability</label>
-                    <p className={`font-mono font-bold text-base ${getAVColorClass(clickedSite.AV)}`}>
+                    <label className="text-[11px] uppercase text-slate-500 block">Availability</label>
+                    <p className={`font-mono font-bold text-xl ${getAVColorClass(clickedSite.AV)}`}>
                       {(parseSLA(clickedSite.AV) * 100).toFixed(2)}%
                     </p>
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase text-slate-500 block">Struktur</label>
+                    <label className="text-[11px] uppercase text-slate-500 block">Struktur</label>
                     <p className="font-semibold text-slate-300 truncate">{renderField('struct', clickedSite.STRUKTUR)}</p>
                   </div>
                 </div>
@@ -1281,13 +1407,13 @@ export default function App() {
                 {/* BARIS 3: Provinsi & Kecamatan Berdampingan */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] uppercase text-slate-500 block">Provinsi</label>
+                    <label className="text-[11px] uppercase text-slate-500 block">Provinsi</label>
                     <p className="text-slate-300 font-semibold truncate" title={renderField('prov', clickedSite.nama_prop || clickedSite.PROVINSI || clickedSite.provinsi)}>
                       {renderField('prov', clickedSite.nama_prop || clickedSite.PROVINSI || clickedSite.provinsi)}
                     </p>
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase text-slate-500 block">Kecamatan</label>
+                    <label className="text-[11px] uppercase text-slate-500 block">Kecamatan</label>
                     <p className="text-slate-300 font-semibold truncate" title={renderField('kec', clickedSite.nama_kec || clickedSite.KECAMATAN || clickedSite.kecamatan)}>
                       {renderField('kec', clickedSite.nama_kec || clickedSite.KECAMATAN || clickedSite.kecamatan)}
                     </p>
@@ -1297,13 +1423,13 @@ export default function App() {
                 {/* BARIS 4: Kabupaten & Kelurahan Berdampingan */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] uppercase text-slate-500 block">Kabupaten / Kota</label>
+                    <label className="text-[11px] uppercase text-slate-500 block">Kabupaten / Kota</label>
                     <p className="text-slate-300 font-semibold truncate" title={renderField('kab', clickedSite.nama_kab || clickedSite.KABUPATEN || clickedSite.kabupaten || clickedSite["KABUPATEN/KOTA"])}>
                       {renderField('kab', clickedSite.nama_kab || clickedSite.KABUPATEN || clickedSite.kabupaten || clickedSite["KABUPATEN/KOTA"])}
                     </p>
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase text-slate-500 block">Kelurahan / Desa</label>
+                    <label className="text-[11px] uppercase text-slate-500 block">Kelurahan / Desa</label>
                     <p className="text-slate-300 font-semibold truncate" title={renderField('kel', clickedSite.nama_kel || clickedSite.KELURAHAN || clickedSite.kelurahan || clickedSite.DESA)}>
                       {renderField('kel', clickedSite.nama_kel || clickedSite.KELURAHAN || clickedSite.kelurahan || clickedSite.DESA)}
                     </p>
@@ -1313,15 +1439,15 @@ export default function App() {
                 {/* PROVIDER 1 */}
                 {clickedSite.Provider_1 && clickedSite.Provider_1 !== '-' && clickedSite.Provider_1 !== 'nan' && (
                   <div className="pt-2.5 mt-1 border-t border-slate-800/80">
-                    <div className={`text-[10px] font-bold mb-1 flex items-center gap-1.5 ${getProviderColor(clickedSite.Provider_1).text}`}>
+                    <div className={`text-[14px] font-bold mb-1 flex items-center gap-1.5 ${getProviderColor(clickedSite.Provider_1).text}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${getProviderColor(clickedSite.Provider_1).bg}`}></span>
                       {clickedSite.Provider_1.toUpperCase()}
                     </div>
                     <div className="grid grid-cols-4 gap-2 text-[11px] pl-2 border-l border-slate-800">
-                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_1 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_1 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_1 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_1 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_1)}`}>{clickedSite.AV_1 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_1 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_1 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_1 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_1 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_1)}`}>{clickedSite.AV_1 || '-'}</p></div>
                     </div>
                   </div>
                 )}
@@ -1329,15 +1455,15 @@ export default function App() {
                 {/* PROVIDER 2 */}
                 {clickedSite.Provider_2 && clickedSite.Provider_2 !== '-' && clickedSite.Provider_2 !== 'nan' && (
                   <div className="pt-2.5 mt-1 border-t border-slate-800/80">
-                    <div className={`text-[10px] font-bold mb-1 flex items-center gap-1.5 ${getProviderColor(clickedSite.Provider_2).text}`}>
+                    <div className={`text-[14px] font-bold mb-1 flex items-center gap-1.5 ${getProviderColor(clickedSite.Provider_2).text}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${getProviderColor(clickedSite.Provider_2).bg}`}></span>
                       {clickedSite.Provider_2.toUpperCase()}
                     </div>
                     <div className="grid grid-cols-4 gap-2 text-[11px] pl-2 border-l border-slate-800">
-                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_2 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_2 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_2 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_2 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[9px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_2)}`}>{clickedSite.AV_2 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_2 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_2 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_2 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_2 || '-'}</p></div>
+                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_2)}`}>{clickedSite.AV_2 || '-'}</p></div>
                     </div>
                   </div>
                 )}
@@ -1346,8 +1472,8 @@ export default function App() {
                 {clickedSite.AV_Rata_Rata && clickedSite.AV_Rata_Rata !== '-' && clickedSite.AV_Rata_Rata !== 'nan' && clickedSite.Provider_2 !== '-' && (
                   <div className="pt-2 mt-1 border-t border-slate-800/80">
                     <div className="flex justify-between items-center bg-slate-950/60 p-2 rounded-lg border border-slate-800/80 shadow-inner">
-                      <span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">AVG. AV</span>
-                      <span className={`font-mono font-bold text-sm drop-shadow-md ${getAVColorClass(clickedSite.AV_Rata_Rata)}`}>
+                      <span className="text-[14px] uppercase text-slate-400 font-bold tracking-wider">AVG. AV</span>
+                      <span className={`font-mono font-bold text-lg drop-shadow-md ${getAVColorClass(clickedSite.AV_Rata_Rata)}`}>
                         {clickedSite.AV_Rata_Rata}
                       </span>
                     </div>
@@ -1381,23 +1507,23 @@ export default function App() {
       {/* LACI FILTER HIERARKI MENGGUNAKAN CUSTOM SELECT */}
       <div className={`absolute top-[47.5%] -translate-y-1/2 right-0 z-30 flex flex-row-reverse items-center transition-transform duration-300 ease-in-out ${isHierarchyOpen ? 'translate-x-0' : 'translate-x-[20rem]'}`}>
         <div className="w-[20rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-bl-2xl border-y border-l border-emerald-500/40 shadow-[-20px_0_30px_rgba(0,0,0,0.5)] h-fit max-h-[55vh] pointer-events-auto flex flex-col">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-4 flex items-center gap-2"><span className="text-base">🎛️</span> Filter Hierarki Spasial</h2>
+          <h2 className="text-base font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-4 flex items-center gap-2"><span className="text-base">🎛️</span> Filter Hierarki</h2>
           
           <div className="space-y-3 flex-1 overflow-visible pr-1 pb-1">
             <div className="space-y-1.5">
-              <label className="text-[10px] text-slate-500 uppercase font-medium block">Provinsi</label>
+              <label className="text-[12px] text-slate-500 uppercase font-medium block">Provinsi</label>
               <CustomSelect value={selProv} onChange={(val) => handleHierarchyChange('prov', val)} options={listProvinsi} placeholder="-- Select Provinsi --" />
             </div>
             <div className="space-y-1.5 mt-2">
-              <label className="text-[10px] text-slate-500 uppercase font-medium block">Kabupaten / Kota</label>
+              <label className="text-[12px] text-slate-500 uppercase font-medium block">Kabupaten / Kota</label>
               <CustomSelect value={selKab} onChange={(val) => handleHierarchyChange('kab', val)} options={listKabupaten} placeholder="-- Select Kabupaten --" disabled={!selProv} />
             </div>
             <div className="space-y-1.5 mt-2">
-              <label className="text-[10px] text-slate-500 uppercase font-medium block">Kecamatan</label>
+              <label className="text-[12px] text-slate-500 uppercase font-medium block">Kecamatan</label>
               <CustomSelect value={selKec} onChange={(val) => handleHierarchyChange('kec', val)} options={listKecamatan} placeholder="-- Select Kecamatan --" disabled={!selKab} />
             </div>
             <div className="space-y-1.5 mt-2 mb-2">
-              <label className="text-[10px] text-slate-500 uppercase font-medium block">Kelurahan / Desa</label>
+              <label className="text-[12px] text-slate-500 uppercase font-medium block">Kelurahan / Desa</label>
               <CustomSelect value={selKel} onChange={(val) => handleHierarchyChange('kel', val)} options={listKelurahan} placeholder="-- Select Kelurahan --" disabled={!selKec} />
             </div>
             
@@ -1410,7 +1536,7 @@ export default function App() {
         <button onClick={() => setIsHierarchyOpen(!isHierarchyOpen)} className="bg-slate-900/95 border-y border-l border-emerald-500/40 py-5 px-1.5 rounded-l-xl pointer-events-auto hover:bg-slate-800 transition shadow-[-5px_0_15px_rgba(16,185,129,0.15)] flex flex-col items-center justify-center gap-3 cursor-pointer group">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mb-1" />
           <span className="text-slate-300 group-hover:text-emerald-400 font-bold tracking-[0.2em] uppercase text-[10px] transition-colors" style={{ writingMode: 'vertical-rl' }}>Filter Hierarki</span>
-          <span className="text-slate-500 text-[10px] font-mono mt-1">{isHierarchyOpen ? '▶' : '◀'}</span>
+          <span className="text-slate-500 text-[12px] font-mono mt-1">{isHierarchyOpen ? '▶' : '◀'}</span>
         </button>
       </div>
 
@@ -1428,28 +1554,34 @@ export default function App() {
             {/* BARIS ATAS: Card 1, 2, 3 (Ditingkatkan paddingnya) */}
             <div className="flex gap-3 flex-1 min-h-0">
               <div onClick={() => setSelectedModal('total')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-4 xl:p-5 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
-                <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-blue-400 transition leading-tight">1. Total Site</div>
+                <div className="text-[13px] xl:text-[15px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-blue-400 transition leading-tight">1. Total Site</div>
                 <div className="flex flex-col mt-auto">
-                  <span className="text-2xl xl:text-3xl font-bold font-mono text-white leading-none mb-1.5">{metrics.total}</span>
-                  <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
+                  <span className="text-3xl xl:text-4xl font-bold font-mono text-white leading-none mb-1.5">{metrics.total}</span>
+                  <span className="text-[10px] xl:text-[11px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
                 </div>
               </div>
 
               <div onClick={() => setSelectedModal('online')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-4 xl:p-5 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-emerald-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
-                <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-emerald-400 transition leading-tight">2. Online Site</div>
+                <div className="text-[13px] xl:text-[15px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-emerald-400 transition leading-tight">2. Online Site</div>
                 <div className="flex flex-col mt-auto">
-                  <span className="text-2xl xl:text-3xl font-bold font-mono text-emerald-400 leading-none mb-1">{metrics.online}</span>
-                  <span className="text-[9px] xl:text-[10px] font-mono text-emerald-500/80 font-bold mb-1">({metrics.onlinePct}%)</span>
-                  <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
+                  {/* WRAPPER BARU: Flex menyamping dan sejajar bawah */}
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-3xl xl:text-4xl font-bold font-mono text-emerald-400 leading-none">{metrics.online}</span>
+                    <span className="text-[16px] xl:text-[18px] font-mono text-emerald-500/80 font-bold">({metrics.onlinePct}%)</span>
+                  </div>
+                  <span className="text-[10px] xl:text-[11px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
                 </div>
               </div>
 
               <div onClick={() => setSelectedModal('offline')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-4 xl:p-5 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-red-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
-                <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-red-400 transition leading-tight">3. Offline Site</div>
+                <div className="text-[13px] xl:text-[15px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-red-400 transition leading-tight">3. Offline Site</div>
                 <div className="flex flex-col mt-auto">
-                  <span className="text-2xl xl:text-3xl font-bold font-mono text-red-400 leading-none mb-1">{metrics.offline}</span>
-                  <span className="text-[9px] xl:text-[10px] font-mono text-red-500/80 font-bold mb-1">({metrics.offlinePct}%)</span>
-                  <span className="text-[8px] xl:text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
+                  {/* WRAPPER BARU: Flex menyamping dan sejajar bawah */}
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-3xl xl:text-4xl font-bold font-mono text-red-400 leading-none">{metrics.offline}</span>
+                    <span className="text-[16px] xl:text-[18px] font-mono text-red-500/80 font-bold">({metrics.offlinePct}%)</span>
+                  </div>
+                  <span className="text-[10px] xl:text-[11px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
                 </div>
               </div>
             </div>
@@ -1457,7 +1589,7 @@ export default function App() {
             {/* BARIS BAWAH: Card 5 (Tinggi Tetap) */}
             <div className="h-[90px] bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between relative group">
               <div className="flex justify-between items-center">
-                <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 leading-tight">5. Filter Waktu</div>
+                <div className="text-[14px] xl:text-[16px] uppercase font-bold tracking-wider text-slate-400 leading-tight">5. Filter Waktu</div>
                 <CustomSelect 
                   value={selectedYear} 
                   onChange={setSelectedYear} 
@@ -1475,7 +1607,7 @@ export default function App() {
                 </div>
                 
                 {/* --- LEGEND ANGKA BULAN YANG HILANG KEMBALI DI SINI --- */}
-                <div className="flex justify-between text-[9px] text-slate-500 mt-2.5 font-mono px-1">
+                <div className="flex justify-between text-[11px] text-slate-500 mt-2.5 font-mono px-1">
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
                     <span 
                       key={m} 
@@ -1492,12 +1624,36 @@ export default function App() {
 
           {/* SISI KANAN: Menggunakan transisi lebar */}
           <div className={`transition-all duration-500 ease-in-out ${selectedPieData ? 'w-1/2' : 'w-2/3'} h-full bg-slate-900/80 backdrop-blur-md p-4 xl:p-6 rounded-xl border border-slate-800 shadow-xl flex flex-col relative`}>
-            <div className="text-[9px] xl:text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-4">4. Data Summary</div>
-            <div className="flex justify-between items-center flex-1 w-full overflow-visible">
-              <DonutStat title="Tipe Koneksi" data={summaryData.tipe} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Tipe Koneksi'} />
-              <DonutStat title="Provider" data={summaryData.provider} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Provider'} />
-              <DonutStat title="Struktur" data={summaryData.struktur} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Struktur'} />
-              <DonutStat title="Bandwidth" data={summaryData.bandwidth} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Bandwidth'} />
+            <div className="text-[13px] xl:text-[14px] uppercase font-bold tracking-wider text-slate-400 mb-1">4. Data Summary</div>
+            
+            {/* PERUBAHAN: justify-between diganti jadi justify-center dengan gap-2 xl:gap-4 agar jarak antar grafik dipepetkan */}
+            <div className="flex justify-center gap-2 xl:gap-4 items-start flex-1 w-full overflow-visible mt-2">
+              
+              {/* PERUBAHAN JUDUL: Silakan ubah isi title="..." sesuai keinginan Anda. Pastikan string di dalam isActive === '...' juga ikut disamakan persis! */}
+              <DonutStat 
+                title="Kategori Koneksi" 
+                data={summaryData.tipe} 
+                onPieClick={setSelectedPieData} 
+                isActive={!selectedPieData || selectedPieData.title === 'Kategori Koneksi'} 
+              />
+              <DonutStat 
+                title="Provider Utama" 
+                data={summaryData.provider} 
+                onPieClick={setSelectedPieData} 
+                isActive={!selectedPieData || selectedPieData.title === 'Provider Utama'} 
+              />
+              <DonutStat 
+                title="Struktur" 
+                data={summaryData.struktur} 
+                onPieClick={setSelectedPieData} 
+                isActive={!selectedPieData || selectedPieData.title === 'Struktur'} 
+              />
+              <DonutStat 
+                title="Kapasitas Bandwidth" 
+                data={summaryData.bandwidth} 
+                onPieClick={setSelectedPieData} 
+                isActive={!selectedPieData || selectedPieData.title === 'Kapasitas Bandwidth'} 
+              />
             </div>
           </div>
 
@@ -1514,22 +1670,30 @@ export default function App() {
                   ✕
                 </button>
               </div>
-              <div className="flex flex-col gap-0.25 overflow-y-auto">
-                {selectedPieData.data.map((d, i) => {
-                  const colors = ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ef4444', '#a855f7'];
-                  const color = colors[i % colors.length];
-                  return (
-                    <div key={d.name} className="flex justify-between items-center border-b border-slate-800 pb-0 gap-2">
-                      <div className="flex items-center gap-1 min-w-0">
-                        <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
-                        <span className="text-[12px] font-bold truncate" style={{ color }}>{d.name}</span>
+              <div className="flex flex-col gap-0.25 overflow-y-auto h-full">
+                {selectedPieData.data.length > 0 ? (
+                  selectedPieData.data.map((d, i) => {
+                    const colors = ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ef4444', '#a855f7'];
+                    const color = colors[i % colors.length];
+                    return (
+                      <div key={d.name} className="flex justify-between items-center border-b border-slate-800 pb-0 gap-2">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
+                          <span className="text-[12px] font-bold truncate" style={{ color }}>{d.name}</span>
+                        </div>
+                        <span className="text-[16px] font-mono font-bold flex-shrink-0 text-white">
+                          {d.count} <span style={{ color }} className="font-semibold">({d.pct}%)</span>
+                        </span>
                       </div>
-                      <span className="text-[16px] font-mono font-bold flex-shrink-0 text-white">
-                        {d.count} <span style={{ color }} className="font-semibold">({d.pct}%)</span>
-                      </span>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  // TAMPILAN JIKA DATA KOSONG (Ditengahkan sempurna)
+                  <div className="flex-1 flex flex-col items-center justify-center opacity-80 pb-6">
+                    <span className="text-4xl mb-3 grayscale drop-shadow-lg">📭</span>
+                    <span className="text-xs font-bold text-red-400 tracking-widest uppercase text-center">TIDAK ADA DATA</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1589,7 +1753,7 @@ export default function App() {
                         <td className="p-3 font-semibold text-slate-200">{p["NAMA SITE"] || p.text_site || '-'}</td>
                         <td className="p-3 text-slate-300">{p.nama_prop || p.PROVINSI || p.provinsi || '-'}</td>
                         <td className="p-3 text-slate-300">{p.nama_kab || p.KABUPATEN || p.kabupaten || p["KABUPATEN/KOTA"] || '-'}</td>
-                        <td className="p-3 text-slate-400">{p.type_koneksi || '-'}</td>
+                        <td className="p-3 text-slate-400">{normalizeTipeKoneksi(p.type_koneksi)}</td>
                         <td className="p-3 text-slate-300">{p.Provider || '-'}</td>
                         {/* DUA DATA BARU DI BAWAH INI */}
                         <td className="p-3 text-slate-300">{p.STRUKTUR || '-'}</td>
