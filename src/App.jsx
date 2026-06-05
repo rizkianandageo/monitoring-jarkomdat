@@ -328,6 +328,7 @@ export default function App() {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const areaBoundsRef = useRef({});
+  const provinceCentroidsRef = useRef({ type: 'FeatureCollection', features: [] });
 
   // Cek apakah di memori browser sudah ada tiket login sebelumnya
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('jarkomdat_session') === 'true');
@@ -799,7 +800,7 @@ export default function App() {
         }
           // LAYER BARU: CLUSTER PROVINSI (Hanya muncul saat Zoom < 5.5)
         if (!map.current.getSource('province-centroids')) {
-          map.current.addSource('province-centroids', { type: 'geojson', data: provinceCentroids });
+          map.current.addSource('province-centroids', { type: 'geojson', data: provinceCentroidsRef.current });
           
           map.current.addLayer({
             id: 'province-clusters',
@@ -953,7 +954,11 @@ export default function App() {
         provSource.setData(provinceCentroids);
       }
     }
-  }, [provinceCentroids, mapReady]);
+  }, [provinceCentroids, mapReady, styleLoaded]);
+
+  useEffect(() => {
+    provinceCentroidsRef.current = provinceCentroids;
+  }, [provinceCentroids]);
 
   useEffect(() => {
     if (map.current && mapReady) {
