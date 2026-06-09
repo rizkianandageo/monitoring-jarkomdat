@@ -108,17 +108,17 @@ const CustomSelect = ({ value, onChange, options, placeholder, disabled, classNa
 // ==========================================================
 // KOMPONEN: LINE CHART TREND SLA (SKALA TETAP 80-100% & ELASTIS)
 // ==========================================================
-const TrendChart = ({ data, displayRange }) => {
+const TrendChart = ({ data, displayRange, isGold }) => {
   const [hoverIdx, setHoverIdx] = useState(null);
 
   if (!data || data.length === 0) return null;
 
   // Ruang Lukis dibuat lebih pipih (panoramic)
-  const width = 800;
-  const height = 80;
-  const paddingX = 5;   
+  const width = 400;
+  const height = 40;
+  const paddingX = 40;   
   const paddingTop = 0;    
-  const paddingBottom = 30; 
+  const paddingBottom = 5; 
 
   const adjustedMin = 80;
   const adjustedMax = 100;
@@ -136,7 +136,7 @@ const TrendChart = ({ data, displayRange }) => {
     <div className="bg-slate-900/60 backdrop-blur-md p-4 xl:p-5 rounded-2xl border border-slate-700/50 shadow-lg w-full h-full flex flex-col relative group overflow-hidden">
        
        {/* HEADER KARTU: Judul di Kiri, AVG & Periode di Kanan */}
-       <div className="text-[11px] xl:text-[13px] uppercase font-bold tracking-wider text-slate-400 mb-1 flex justify-between items-center z-10 flex-shrink-0">
+       <div className={`text-[11px] xl:text-[13px] uppercase font-bold tracking-wider ${isGold ? 'text-amber-400' : 'text-slate-400'} mb-1 flex justify-between items-center z-10 flex-shrink-0`}>
          <span>📈 TREND BULANAN</span>
          <div className="flex items-center gap-3 xl:gap-4">
             {/* Nilai AVG AV */}
@@ -157,7 +157,7 @@ const TrendChart = ({ data, displayRange }) => {
          <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 w-full h-full overflow-visible">
             
             <line x1={paddingX} y1={paddingTop} x2={paddingX} y2={height - paddingBottom} stroke="#334155" strokeWidth="2" strokeLinecap="round" />
-            <text x={paddingX - 40} y={(paddingTop + (height - paddingBottom)) / 2} fontSize="10" fontWeight="bold" fill="#94a3b8" textAnchor="middle" transform={`rotate(-90, ${paddingX - 40}, ${(paddingTop + (height - paddingBottom)) / 2})`} className="tracking-widest">AV.(%)</text>
+            <text x={paddingX - 40} y={(paddingTop + (height - paddingBottom)) / 1.75 } fontSize="10" fontWeight="bold" fill="#94a3b8" textAnchor="middle" transform={`rotate(-90, ${paddingX - 40}, ${(paddingTop + (height - paddingBottom)) / 2})`} className="tracking-widest">AV.(%)</text>
 
             <text x={paddingX - 10} y={getY(100)} fontSize="10" fill="#64748b" textAnchor="end" dominantBaseline="middle" className="font-mono">100%</text>
             <line x1={paddingX} y1={getY(100)} x2={width - paddingX + 20} y2={getY(100)} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
@@ -168,7 +168,7 @@ const TrendChart = ({ data, displayRange }) => {
             <text x={paddingX - 10} y={getY(80)} fontSize="10" fill="#64748b" textAnchor="end" dominantBaseline="middle" className="font-mono">80%</text>
             <line x1={paddingX} y1={getY(80)} x2={width - paddingX + 20} y2={getY(80)} stroke="#334155" strokeWidth="2" strokeLinecap="round" />
 
-            <text x={width / 2} y={height - 0} fontSize="10" fontWeight="bold" fill="#94a3b8" textAnchor="middle" className="tracking-widest">PERIODE BULAN</text>
+            <text x={width / 2} y={height - -23} fontSize="10" fontWeight="bold" fill="#94a3b8" textAnchor="middle" className="tracking-widest">PERIODE BULAN</text>
 
             <polyline points={points} fill="none" stroke="#10b981" strokeWidth="3" strokeLinejoin="round" className="opacity-80 group-hover:opacity-100 transition-opacity drop-shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
             
@@ -205,6 +205,71 @@ const TrendChart = ({ data, displayRange }) => {
              </div>
            </div>
          )}
+       </div>
+    </div>
+  );
+};
+
+// ==========================================================
+// KOMPONEN: KONTROL PERIODE (TIME SLIDER DASHBOARD)
+// ==========================================================
+const DashTimeSlider = ({ selectedYear, setSelectedYear, selectedMonth, setSelectedMonth, uniqueYears, isGold }) => {
+  return (
+    <div className="bg-slate-900/60 backdrop-blur-md p-4 xl:p-5 rounded-2xl border border-slate-700/50 shadow-lg w-full h-full flex flex-col justify-between relative group overflow-hidden">
+       
+       {/* HEADER KARTU & DROPDOWN TAHUN */}
+       <div className="flex justify-between items-center mb-2 z-10 flex-shrink-0">
+         <h3 className={`text-[11px] xl:text-[13px] uppercase font-bold tracking-wider ${isGold ? 'text-amber-400' : 'text-slate-400'} flex items-center gap-2`}>
+           <span>⏱️ FILTER WAKTU</span>
+         </h3>
+         {/* Dropdown Tahun seperti di Peta */}
+         <div className="w-24">
+           <CustomSelect 
+             value={selectedYear} 
+             onChange={setSelectedYear} 
+             options={uniqueYears} 
+             placeholder="Tahun" 
+             disabled={uniqueYears.length === 0}
+             menuUp={false} // Menu ke bawah karena ada di baris atas layar
+           />
+         </div>
+       </div>
+
+       {/* KONTROL SLIDER BULAN (1-12) */}
+       <div className="flex-1 flex flex-col justify-center mt-2 pb-1 relative z-0">
+          <div className="flex flex-col w-full">
+            <div className="relative h-2 bg-slate-800 rounded-lg w-full flex items-center shadow-inner">
+              
+              {/* Indikator progress bar hijau */}
+              <div 
+                className="absolute h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-lg pointer-events-none transition-all duration-300 ease-out" 
+                style={{ width: `${((selectedMonth - 1) / 11) * 100}%` }} 
+              />
+              
+              {/* Input Range Murni (1 - 12) */}
+              <input 
+                type="range" 
+                min="1" 
+                max="12" 
+                value={selectedMonth} 
+                onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))} 
+                disabled={uniqueYears.length === 0} 
+                className="absolute w-full h-full appearance-none bg-transparent cursor-pointer z-20 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-emerald-500 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(16,185,129,0.8)]" 
+              />
+            </div>
+            
+            {/* Label Bulan (01 - 12) */}
+            <div className="flex justify-between text-[9px] xl:text-[11px] text-slate-500 mt-3 font-mono px-1">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
+                <span 
+                  key={m} 
+                  className={m === selectedMonth ? 'text-emerald-400 font-extrabold scale-125 transition-transform drop-shadow-[0_0_5px_rgba(52,211,153,0.8)]' : 'transition-transform font-semibold hover:text-slate-300'}
+                >
+                  {String(m).padStart(2, '0')}
+                </span>
+              ))}
+            </div>
+          </div>
        </div>
     </div>
   );
@@ -331,53 +396,57 @@ const ZoomGauge = ({ zoom, selProv, selKab, selKec, selKel }) => {
 };
 
 // ==========================================================
-// KOMPONEN: KARTU DASHBOARD EKSKUTIF (UKURAN DIPERBESAR)
+// KOMPONEN: KARTU DASHBOARD EKSKUTIF (UKURAN DIPERBESAR & BISA DIKLIK)
 // ==========================================================
-const DashCard = ({ title, value, sub, icon, images, color, small }) => (
-  <div className="w-full h-full bg-slate-900/60 backdrop-blur-md border border-slate-700/50 rounded-2xl p-4 xl:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:bg-slate-800/60 transition-colors overflow-hidden">
-    
+const DashCard = ({ title, value, sub, icon, images, color, small, isGold, onClick }) => (
+  <div 
+    onClick={onClick}
+    className={`w-full h-full bg-slate-900/60 backdrop-blur-md border border-slate-700/50 rounded-2xl p-4 xl:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex flex-col justify-between overflow-hidden group transition-all duration-300 ${onClick ? 'cursor-pointer hover:bg-slate-800/80 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]' : 'hover:bg-slate-800/60'}`}
+  >
     <div className="flex justify-between items-start mb-1">
-      {/* 1. UKURAN TEKS JUDUL (Kiri Atas) */}
-      <h3 className={`${small ? 'text-xs xl:text-sm' : 'text-sm xl:text-base'} font-bold uppercase tracking-wider text-slate-400 truncate pr-1`}>
+      <h3 className={`${small ? 'text-xs xl:text-sm' : 'text-sm xl:text-base'} font-bold uppercase tracking-wider ${isGold ? 'text-amber-400' : 'text-slate-400'} truncate pr-1 drop-shadow-sm`}>
         {title}
       </h3>
       
       <div className="flex gap-1.5 xl:gap-2 items-center flex-shrink-0">
         {images ? (
           images.map((img, idx) => (
-            // 2. UKURAN LOGO GAMBAR (Kanan Atas) -> h-6/h-7 untuk small, h-8/h-10 untuk normal
-            <img key={idx} src={img} alt="Logo Provider" className={`${small ? 'h-6 xl:h-7' : 'h-8 xl:h-10'} w-auto object-contain drop-shadow-md`} />
+            <img key={idx} src={img} alt="Logo Provider" className={`${small ? 'h-6 xl:h-7' : 'h-8 xl:h-10'} w-auto object-contain drop-shadow-md transition-transform duration-300 ${onClick ? 'group-hover:scale-110' : ''}`} />
           ))
         ) : (
-          // 3. UKURAN ICON EMOJI (Kanan Atas)
-          <span className={`${small ? 'text-2xl xl:text-3xl' : 'text-3xl xl:text-4xl'} opacity-80 drop-shadow-md`}>
+          <span className={`${small ? 'text-2xl xl:text-3xl' : 'text-3xl xl:text-4xl'} opacity-80 drop-shadow-md transition-transform duration-300 ${onClick ? 'group-hover:scale-110' : ''}`}>
             {icon}
           </span>
         )}
       </div>
     </div>
 
-    <div className="flex items-baseline gap-1.5 xl:gap-2">
-      {/* 4. UKURAN ANGKA UTAMA (Kiri Bawah) */}
-      <span className={`${small ? 'text-3xl xl:text-4xl' : 'text-5xl xl:text-6xl'} font-mono font-extrabold ${color} drop-shadow-lg truncate`}>
-        {value}
-      </span>
+    <div className="flex flex-col mt-auto">
+      <div className="flex items-baseline gap-1.5 xl:gap-2">
+        <span className={`${small ? 'text-3xl xl:text-4xl' : 'text-5xl xl:text-6xl'} font-mono font-extrabold ${color} drop-shadow-lg truncate transition-transform duration-300 ${onClick ? 'group-hover:translate-x-1' : ''}`}>
+          {value}
+        </span>
+        {sub && (
+          <span className={`${small ? 'text-xs xl:text-sm' : 'text-base xl:text-xl'} font-mono font-bold text-slate-500`}>
+            {sub}
+          </span>
+        )}
+      </div>
       
-      {/* 5. UKURAN ANGKA KECIL DALAM KURUNG / PERSENTASE */}
-      {sub && (
-        <span className={`${small ? 'text-xs xl:text-sm' : 'text-base xl:text-xl'} font-mono font-bold text-slate-500`}>
-          {sub}
+      {/* Teks Tabel Lengkap (Hanya muncul jika ada prop onClick) */}
+      {onClick && (
+        <span className="text-[9px] xl:text-[10px] text-slate-500 group-hover:text-slate-300 font-medium mt-1.5 transition-colors flex items-center gap-1">
+          Tabel Lengkap <span className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform">↗</span>
         </span>
       )}
     </div>
-    
   </div>
 );
 
 // ==========================================================
 // KOMPONEN: DASHBOARD PIE CHART KHUSUS (DIPERBESAR)
 // ==========================================================
-const DashPieChart = ({ title, items }) => {
+const DashPieChart = ({ title, items, isGold }) => {
   const total = items.reduce((sum, item) => sum + item.value, 0);
   let cumulative = 0;
   
@@ -402,9 +471,9 @@ const DashPieChart = ({ title, items }) => {
        </div>
        
        <div className="flex flex-col gap-2 w-full max-w-[140px] xl:max-w-[180px] justify-center">
-         <h3 className="text-xs xl:text-sm font-bold uppercase tracking-wider text-slate-400 mb-1 border-b border-slate-700/50 pb-1.5">
-           {title}
-         </h3>
+        <h3 className={`text-xs xl:text-sm font-bold uppercase tracking-wider ${isGold ? 'text-amber-400' : 'text-slate-400'} mb-1 border-b border-slate-700/50 pb-1.5`}>
+          {title}
+        </h3>
          {data.map(d => (
            <div key={d.name} className="flex justify-between items-center text-[10px] xl:text-[12px] font-bold">
              <div className="flex items-center gap-2">
@@ -422,14 +491,14 @@ const DashPieChart = ({ title, items }) => {
 // ==========================================================
 // KOMPONEN: DASHBOARD BAR CHART KHUSUS (ANTI BOCOR)
 // ==========================================================
-const DashBarChart = ({ title, items }) => {
+const DashBarChart = ({ title, items, isGold }) => {
   const maxVal = Math.max(...items.map(d => d.value), 1);
 
   return (
     <div className="bg-slate-900/60 backdrop-blur-md border border-slate-700/50 rounded-2xl p-4 xl:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex flex-col hover:bg-slate-800/60 transition-colors h-full w-full overflow-hidden">
-       <h3 className="text-[11px] xl:text-[13px] font-bold uppercase tracking-wider text-slate-400 mb-2 border-b border-slate-700/50 pb-1.5 flex-shrink-0">
-         {title}
-       </h3>
+      <h3 className={`text-[11px] xl:text-[13px] font-bold uppercase tracking-wider ${isGold ? 'text-amber-400' : 'text-slate-400'} mb-2 border-b border-slate-700/50 pb-1.5 flex-shrink-0 text-center`}>
+        {title}
+      </h3>
        
        <div className="flex-1 flex items-end justify-around gap-2 xl:gap-4 mt-1 pb-1 min-h-0">
          {items.map(d => {
@@ -497,6 +566,7 @@ export default function App() {
 
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(1);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const [selProv, setSelProv] = useState('');
   const [selKab, setSelKab] = useState('');
@@ -1364,9 +1434,39 @@ export default function App() {
 
   const modalTableData = useMemo(() => {
     if (!selectedModal) return [];
+    
+    // Baris 1: Status Utama
     if (selectedModal === 'total') return filteredFeatures;
     if (selectedModal === 'online') return filteredFeatures.filter(f => f.properties.status_link === 'AKTIF');
     if (selectedModal === 'offline') return filteredFeatures.filter(f => f.properties.status_link === 'TIDAK AKTIF');
+
+    // Baris 2: Provider Eksklusif (Only / Dual)
+    if (selectedModal === 'telkom_only') return filteredFeatures.filter(f => {
+      const p = String(f.properties.Provider || '').toUpperCase();
+      return p.includes('TELKOM') && !p.includes('XL') && !p.includes('ICON');
+    });
+    if (selectedModal === 'xl_only') return filteredFeatures.filter(f => {
+      const p = String(f.properties.Provider || '').toUpperCase();
+      return p.includes('XL') && !p.includes('TELKOM');
+    });
+    if (selectedModal === 'icon_only') return filteredFeatures.filter(f => {
+      const p = String(f.properties.Provider || '').toUpperCase();
+      return p.includes('ICON') && !p.includes('TELKOM');
+    });
+    if (selectedModal === 'telkom_icon') return filteredFeatures.filter(f => {
+      const p = String(f.properties.Provider || '').toUpperCase();
+      return p.includes('TELKOM') && p.includes('ICON');
+    });
+    if (selectedModal === 'telkom_xl') return filteredFeatures.filter(f => {
+      const p = String(f.properties.Provider || '').toUpperCase();
+      return p.includes('TELKOM') && p.includes('XL');
+    });
+
+    // Baris 3: Total Provider Gabungan
+    if (selectedModal === 'total_telkom') return filteredFeatures.filter(f => String(f.properties.Provider || '').toUpperCase().includes('TELKOM'));
+    if (selectedModal === 'total_xl') return filteredFeatures.filter(f => String(f.properties.Provider || '').toUpperCase().includes('XL'));
+    if (selectedModal === 'total_icon') return filteredFeatures.filter(f => String(f.properties.Provider || '').toUpperCase().includes('ICON'));
+
     return [];
   }, [selectedModal, filteredFeatures]);
 
@@ -1567,10 +1667,19 @@ export default function App() {
           LAYAR 1: EXECUTIVE DASHBOARD
           ========================================================== */}
       {!showMap && (
-        <div className="absolute inset-0 z-50 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950 flex flex-col pt-6 pb-6 px-8 overflow-hidden animate-in fade-in duration-500">
-          
-          {/* HEADER DASHBOARD (BAGIAN ATAS TIDAK DIUBAH TINGGINYA) */}
-          <div className="flex justify-between items-center mb-6 border-b border-slate-800/80 pb-4 flex-shrink-0">
+        <div className="absolute inset-0 z-50 flex flex-col pt-6 pb-6 px-8 overflow-hidden animate-in fade-in duration-500"
+            style={{
+              backgroundImage: "url('./sla-images.jpg')",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "center",
+              backgroundSize: "100%", // Mengatur seberapa besar logo di tengah
+              backgroundColor: "#020617" // Warna dasar tetap slate-950
+            }}>
+            
+            {/* Tambahkan overlay agar kartu tetap terlihat jelas di atas logo */}
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px] z-0 pointer-events-none" />
+          {/* HEADER DASHBOARD (DIBERI RELATIVE Z-10 AGAR DI ATAS BLUR) */}
+          <div className="relative z-10 flex justify-between items-center mb-6 border-b border-slate-800/80 pb-4 flex-shrink-0">
             <div className="flex items-center gap-4">
               <img src="./kemendagri.svg" className="h-12 xl:h-14 w-12 xl:w-14 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]" />
               <div>
@@ -1589,8 +1698,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* SISA LAYAR DIBAGI 4 BARIS SAMA RATA (MASING-MASING 25%) */}
-          <div className="flex-1 grid grid-rows-4 gap-4 xl:gap-5 min-h-[600px]">
+          {/* SISA LAYAR DIBAGI 4 BARIS (DIBERI RELATIVE Z-10 AGAR DI ATAS BLUR) */}
+          <div className="relative z-10 flex-1 grid grid-rows-4 gap-4 xl:gap-5 min-h-[600px]">
              
              {/* BARIS 1: 35% Kiri (Grafik) & 65% Kanan (3 Card Utama) */}
              <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
@@ -1600,13 +1709,13 @@ export default function App() {
                      items={[
                        { name: 'Online', value: metrics.online, color: '#10b981' },
                        { name: 'Offline', value: metrics.offline, color: '#ef4444' }
-                     ]} 
+                     ]} isGold
                    />
                 </div>
                 <div className="w-[65%] flex flex-row gap-4 xl:gap-5 h-full">
-                   <div className="flex-1 min-w-0"><DashCard title="Total Site" value={metrics.total} icon="🏢" color="text-blue-400" /></div>
-                   <div className="flex-1 min-w-0"><DashCard title="Online Site" value={metrics.online} sub={`(${metrics.onlinePct}%)`} icon="✅" color="text-emerald-400" /></div>
-                   <div className="flex-1 min-w-0"><DashCard title="Offline Site" value={metrics.offline} sub={`(${metrics.offlinePct}%)`} icon="❌" color="text-red-400" /></div>
+                  <div className="flex-1 min-w-0"><DashCard title="Total Site" value={metrics.total} icon="🏢" color="text-blue-400" isGold onClick={() => setSelectedModal('total')} /></div>
+                  <div className="flex-1 min-w-0"><DashCard title="Online Site" value={metrics.online} sub={`(${metrics.onlinePct}%)`} icon="✅" color="text-emerald-400" isGold onClick={() => setSelectedModal('online')} /></div>
+                  <div className="flex-1 min-w-0"><DashCard title="Offline Site" value={metrics.offline} sub={`(${metrics.offlinePct}%)`} icon="❌" color="text-red-400" isGold onClick={() => setSelectedModal('offline')} /></div>
                 </div>
              </div>
 
@@ -1616,32 +1725,20 @@ export default function App() {
                    <DashPieChart 
                      title="Provider" 
                      items={[
-                       { name: 'Telkom', value: providerMetrics.telkom, color: '#ef4444' },
-                       { name: 'XL', value: providerMetrics.xl, color: '#f59e0b' },
-                       { name: 'Icon', value: providerMetrics.icon, color: '#2dd4bf' },
+                       { name: 'Telkom Only', value: providerMetrics.telkom, color: '#ef4444' },
+                       { name: 'XL Only', value: providerMetrics.xl, color: '#f59e0b' },
+                       { name: 'Icon Only', value: providerMetrics.icon, color: '#2dd4bf' },
                        { name: 'Telkom-Icon', value: providerMetrics.telkomIcon, color: '#38bdf8' },
                        { name: 'Telkom-XL', value: providerMetrics.telkomXl, color: '#c084fc' }
-                     ]} 
+                     ]} isGold
                    />
                 </div>
                 <div className="w-[65%] flex flex-row gap-3 xl:gap-4 h-full">
-                   <div className="flex-1 min-w-0"><DashCard title="Telkom" value={providerMetrics.telkom} images={['./Telkom.png']} color="text-red-500" small /></div>
-                   <div className="flex-1 min-w-0"><DashCard title="XL" value={providerMetrics.xl} images={['./XL.png']} color="text-amber-500" small /></div>
-                   <div className="flex-1 min-w-0"><DashCard title="Icon" value={providerMetrics.icon} images={['./Icon.png']} color="text-teal-400" small /></div>
-                   <div className="flex-1 min-w-0"><DashCard 
-                      title={<span className="flex flex-col leading-tight"><span>Telkom</span><span>& Icon</span></span>} 
-                      value={providerMetrics.telkomIcon} 
-                      images={['./Telkom.png', './Icon.png']} 
-                      color="text-sky-400" 
-                      small 
-                    /></div>
-                   <div className="flex-1 min-w-0"><DashCard 
-                    title={<span className="flex flex-col leading-tight"><span>Telkom</span><span>& XL</span></span>} 
-                    value={providerMetrics.telkomXl} 
-                    images={['./Telkom.png', './XL.png']} 
-                    color="text-purple-400" 
-                    small 
-                  /></div>
+                  <div className="flex-1 min-w-0"><DashCard title="Telkom Only" value={providerMetrics.telkom} images={['./Telkom.png']} color="text-red-500" small onClick={() => setSelectedModal('telkom_only')} /></div>
+                  <div className="flex-1 min-w-0"><DashCard title="XL Only" value={providerMetrics.xl} images={['./XL.png']} color="text-amber-500" small onClick={() => setSelectedModal('xl_only')} /></div>
+                  <div className="flex-1 min-w-0"><DashCard title="Icon Only" value={providerMetrics.icon} images={['./Icon.png']} color="text-teal-400" small onClick={() => setSelectedModal('icon_only')} /></div>
+                  <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Telkom</span><span>& Icon</span></span>} value={providerMetrics.telkomIcon} images={['./Telkom.png', './Icon.png']} color="text-sky-400" small onClick={() => setSelectedModal('telkom_icon')} /></div>
+                  <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Telkom</span><span>& XL</span></span>} value={providerMetrics.telkomXl} images={['./Telkom.png', './XL.png']} color="text-purple-400" small onClick={() => setSelectedModal('telkom_xl')} /></div>
                 </div>
              </div>
 
@@ -1654,38 +1751,47 @@ export default function App() {
                        { name: 'Telkom', value: providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon, color: '#ef4444' },
                        { name: 'XL', value: providerMetrics.xl + providerMetrics.telkomXl, color: '#f59e0b' },
                        { name: 'Icon', value: providerMetrics.icon + providerMetrics.telkomIcon, color: '#2dd4bf' }
-                     ]} 
+                     ]} isGold
                    />
                 </div>
                 <div className="w-[65%] flex flex-row gap-4 xl:gap-5 h-full">
-                   <div className="flex-1 min-w-0">
-                     <DashCard title="Total Telkom" value={providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon} images={['./Telkom.png']} color="text-red-500" />
-                   </div>
-                   <div className="flex-1 min-w-0">
-                     <DashCard title="Total XL" value={providerMetrics.xl + providerMetrics.telkomXl} images={['./XL.png']} color="text-amber-500" />
-                   </div>
-                   <div className="flex-1 min-w-0">
-                     <DashCard title="Total Icon" value={providerMetrics.icon + providerMetrics.telkomIcon} images={['./Icon.png']} color="text-teal-400" />
-                   </div>
+                  <div className="flex-1 min-w-0"><DashCard title="Total Telkom" value={providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon} images={['./Telkom.png']} color="text-red-500" onClick={() => setSelectedModal('total_telkom')} /></div>
+                  <div className="flex-1 min-w-0"><DashCard title="Total XL" value={providerMetrics.xl + providerMetrics.telkomXl} images={['./XL.png']} color="text-amber-500" onClick={() => setSelectedModal('total_xl')} /></div>
+                  <div className="flex-1 min-w-0"><DashCard title="Total Icon" value={providerMetrics.icon + providerMetrics.telkomIcon} images={['./Icon.png']} color="text-teal-400" onClick={() => setSelectedModal('total_icon')} /></div>
                 </div>
              </div>
 
-             {/* BARIS 4: 80% Kiri (Trend Chart) & 20% Kanan (Tombol Buka Peta) */}
+             {/* BARIS 4: 40% Slider, 40% Trend Chart, 20% Button Peta */}
              <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
-                {/* 80% Kiri */}
-                <div className="w-[80%] h-full">
-                   <TrendChart data={trendData} displayRange={displayRange} />
+                
+                {/* 1. SLIDER KONTROL WAKTU (40%) */}
+                <div className="w-[40%] h-full">
+                   <DashTimeSlider 
+                     selectedYear={selectedYear}
+                     setSelectedYear={setSelectedYear}
+                     selectedMonth={selectedMonth}
+                     setSelectedMonth={setSelectedMonth}
+                     uniqueYears={uniqueYears}
+                     isGold 
+                   />
                 </div>
-                {/* 20% Kanan */}
+
+                {/* 2. TREND BULANAN (40%) */}
+                <div className="w-[40%] h-full">
+                   <TrendChart data={trendData} displayRange={displayRange} isGold />
+                </div>
+                
+                {/* 3. TOMBOL BUKA PETA (20%) */}
                 <div className="w-[20%] h-full">
-                   <button 
-                     onClick={() => setShowMap(true)} 
-                     className="w-full h-full bg-gradient-to-br from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 text-slate-950 text-sm xl:text-lg font-extrabold tracking-widest uppercase rounded-2xl transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:shadow-[0_0_60px_rgba(16,185,129,0.6)] group flex flex-col items-center justify-center gap-2 xl:gap-4 border border-emerald-400 focus:outline-none"
-                   >
-                      <span className="text-4xl xl:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-md">🗺️</span>
-                      <span className="text-center px-2">Buka Mode Peta</span>
-                   </button>
+                  <button 
+                    onClick={() => setShowMap(true)} 
+                    className="w-full h-full bg-emerald-600 hover:bg-emerald-500 text-white text-xl font-extrabold tracking-widest uppercase rounded-2xl transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:shadow-[0_0_60px_rgba(16,185,129,0.6)] group flex flex-col items-center justify-center gap-4 border border-emerald-400 relative z-20"
+                  >
+                      <span className="text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-md">🗺️</span>
+                      <span className="text-white">Buka Mode Peta</span>
+                  </button>
                 </div>
+
              </div>
 
           </div>
@@ -2062,14 +2168,16 @@ export default function App() {
               )}
             </div>
           </div>
-
-          {/* MODAL POPUP (RAW DATA TABLE) */}
+        </>
+      )}
+      {/* MODAL POPUP (RAW DATA TABLE) */}
           {selectedModal && (
-            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-              <div className="bg-slate-900 w-full max-w-6xl h-[80vh] rounded-2xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden">
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6 pointer-events-auto">
+              <div className="bg-slate-900 w-full max-w-6xl h-[80vh] rounded-2xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
                 <div className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
                   <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">Raw Data Table — {selectedModal.toUpperCase()} SITES</h3>
+                    {/* Gunakan replace untuk membuang underscore pada judul */}
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">Raw Data Table — {selectedModal.toUpperCase().replace('_', ' ')} SITES</h3>
                     <p className="text-xs text-slate-400 font-mono mt-0.5">Records Found: {modalTableData.length} lines</p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -2112,9 +2220,6 @@ export default function App() {
               </div>
             </div>
           )}
-
-        </>
-      )}
     </div>
   );
 }
