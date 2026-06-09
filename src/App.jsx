@@ -106,66 +106,82 @@ const CustomSelect = ({ value, onChange, options, placeholder, disabled, classNa
 };
 
 // ==========================================================
-// KOMPONEN: LINE CHART TREND SLA (KUSTOM DENGAN HOVER TOOLTIP)
+// KOMPONEN: LINE CHART TREND SLA (SKALA TETAP 80-100% & ELASTIS)
 // ==========================================================
-const TrendChart = ({ data }) => {
+const TrendChart = ({ data, displayRange }) => {
   const [hoverIdx, setHoverIdx] = useState(null);
 
   if (!data || data.length === 0) return null;
 
-  if (data.length === 1) {
-    return (
-      <div className="bg-slate-900/90 backdrop-blur-md p-4 rounded-xl border border-slate-800 shadow-xl w-[320px] pointer-events-auto">
-         <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-2 flex justify-between">
-           <span>TREND BULANAN AVAILABILITY</span>
-           <span className="text-emerald-400 font-mono font-bold drop-shadow-md">{data[0].avg.toFixed(2)}%</span>
-         </div>
-         <div className="text-[10px] text-slate-500 text-center py-4 italic font-medium border border-dashed border-slate-700 rounded bg-slate-950/50 mt-2">Data baru 1 periode ({data[0].month})</div>
-      </div>
-    );
-  }
+  // Ruang Lukis dibuat lebih pipih (panoramic)
+  const width = 800;
+  const height = 80;
+  const paddingX = 5;   
+  const paddingTop = 0;    
+  const paddingBottom = 30; 
 
-  // FIX 1: Sesuaikan lebar SVG karena container memiliki padding (320 - 16 - 16 = 288)
-  const width = 288;
-  const height = 90;
-  const paddingX = 15;
-  const paddingTop = 10;
-  const paddingBottom = 25; 
-
-  const minAvg = Math.min(...data.map(d => d.avg));
-  const maxAvg = Math.max(...data.map(d => d.avg));
-  const range = (maxAvg - minAvg) || 1;
-  const rangePadding = range * 0.2;
-  const adjustedMin = minAvg - rangePadding;
-  const adjustedMax = maxAvg + rangePadding;
+  const adjustedMin = 80;
+  const adjustedMax = 100;
   const adjustedRange = adjustedMax - adjustedMin;
 
   const getX = (i) => paddingX + (i / (data.length - 1)) * (width - 2 * paddingX);
-  const getY = (val) => height - paddingBottom - ((val - adjustedMin) / adjustedRange) * (height - paddingTop - paddingBottom);
+  const getY = (val) => {
+    const clampedVal = val < adjustedMin ? adjustedMin : (val > adjustedMax ? adjustedMax : val);
+    return height - paddingBottom - ((clampedVal - adjustedMin) / adjustedRange) * (height - paddingTop - paddingBottom);
+  };
 
   const points = data.map((d, i) => `${getX(i)},${getY(d.avg)}`).join(' ');
 
   return (
-    <div className="bg-slate-900/90 backdrop-blur-md p-4 rounded-xl border border-slate-800 shadow-xl w-[320px] pointer-events-auto group relative">
-       <div className="text-[12px] uppercase font-bold tracking-wider text-slate-400 mb-2 flex justify-between">
-         <span>TREND BULANAN AVAILABILITY</span>
-         <span className="text-sm text-emerald-400 font-mono font-bold drop-shadow-md">{data[data.length-1].avg.toFixed(2)}%</span>
+    <div className="bg-slate-900/60 backdrop-blur-md p-4 xl:p-5 rounded-2xl border border-slate-700/50 shadow-lg w-full h-full flex flex-col relative group overflow-hidden">
+       
+       {/* HEADER KARTU: Judul di Kiri, AVG & Periode di Kanan */}
+       <div className="text-[11px] xl:text-[13px] uppercase font-bold tracking-wider text-slate-400 mb-1 flex justify-between items-center z-10 flex-shrink-0">
+         <span>📈 TREND BULANAN</span>
+         <div className="flex items-center gap-3 xl:gap-4">
+            {/* Nilai AVG AV */}
+            <div className="flex items-center gap-1.5 border-r border-slate-700/80 pr-3 xl:pr-4">
+               <span className="text-[9px] xl:text-[10px] text-slate-500">AVG:</span>
+               <span className="text-sm xl:text-base text-emerald-400 font-mono font-bold drop-shadow-md">{data[data.length-1].avg.toFixed(2)}%</span>
+            </div>
+            {/* Box Periode Aktif */}
+            <div className="bg-slate-800/80 border border-slate-600/50 rounded-md px-2 py-1 flex items-center gap-1.5 shadow-inner">
+               <span className="text-[9px] xl:text-[10px] text-slate-400">PERIODE:</span>
+               <span className="text-[10px] xl:text-[11px] text-slate-200 font-mono font-bold">{displayRange}</span>
+            </div>
+         </div>
        </div>
 
-       <div className="relative">
-         <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
-            <polyline points={points} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinejoin="round" className="opacity-80 group-hover:opacity-100 transition-opacity drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
+       {/* Pembungkus SVG */}
+       <div className="relative flex-1 w-full mt-2 min-h-0">
+         <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 w-full h-full overflow-visible">
+            
+            <line x1={paddingX} y1={paddingTop} x2={paddingX} y2={height - paddingBottom} stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+            <text x={paddingX - 40} y={(paddingTop + (height - paddingBottom)) / 2} fontSize="10" fontWeight="bold" fill="#94a3b8" textAnchor="middle" transform={`rotate(-90, ${paddingX - 40}, ${(paddingTop + (height - paddingBottom)) / 2})`} className="tracking-widest">AV.(%)</text>
+
+            <text x={paddingX - 10} y={getY(100)} fontSize="10" fill="#64748b" textAnchor="end" dominantBaseline="middle" className="font-mono">100%</text>
+            <line x1={paddingX} y1={getY(100)} x2={width - paddingX + 20} y2={getY(100)} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
+
+            <text x={paddingX - 10} y={getY(90)} fontSize="10" fill="#64748b" textAnchor="end" dominantBaseline="middle" className="font-mono">90%</text>
+            <line x1={paddingX} y1={getY(90)} x2={width - paddingX + 20} y2={getY(90)} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
+
+            <text x={paddingX - 10} y={getY(80)} fontSize="10" fill="#64748b" textAnchor="end" dominantBaseline="middle" className="font-mono">80%</text>
+            <line x1={paddingX} y1={getY(80)} x2={width - paddingX + 20} y2={getY(80)} stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+
+            <text x={width / 2} y={height - 0} fontSize="10" fontWeight="bold" fill="#94a3b8" textAnchor="middle" className="tracking-widest">PERIODE BULAN</text>
+
+            <polyline points={points} fill="none" stroke="#10b981" strokeWidth="3" strokeLinejoin="round" className="opacity-80 group-hover:opacity-100 transition-opacity drop-shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+            
             {data.map((d, i) => {
                const x = getX(i);
                const y = getY(d.avg);
                const isHovered = hoverIdx === i;
                return (
                  <g key={i} className="cursor-crosshair" onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
-                   <circle cx={x} cy={y} r={isHovered ? "6" : "4"} fill={isHovered ? "#34d399" : "#0f172a"} stroke="#10b981" strokeWidth={isHovered ? "2" : "1.5"} className="transition-all duration-200" />
-                   {/* Lingkaran transparan besar agar kursor lebih mudah memicu hover */}
-                   <circle cx={x} cy={y} r="15" fill="transparent" />
-                   {/* Label Tiap Bulan */}
-                   <text x={x} y={height - 5} fontSize="10" fontWeight="bold" fill={isHovered ? "#34d399" : "#64748b"} textAnchor="middle" className="font-mono transition-colors duration-200 pointer-events-none">
+                   {isHovered && <line x1={x} y1={y} x2={x} y2={getY(80)} stroke="#34d399" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />}
+                   <circle cx={x} cy={y} r={isHovered ? "6" : "4"} fill={isHovered ? "#34d399" : "#0f172a"} stroke="#10b981" strokeWidth={isHovered ? "2.5" : "1.5"} className="transition-all duration-200" />
+                   <circle cx={x} cy={y} r="20" fill="transparent" />
+                   <text x={x} y={getY(80) + 16} fontSize="10" fontWeight="bold" fill={isHovered ? "#34d399" : "#64748b"} textAnchor="middle" className="font-mono transition-colors duration-200 pointer-events-none">
                      {d.month.split('/')[1]}
                    </text>
                  </g>
@@ -175,27 +191,17 @@ const TrendChart = ({ data }) => {
 
          {hoverIdx !== null && (
            <div
-             className="absolute bg-slate-900/95 backdrop-blur-md border border-slate-700 p-2.5 rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.8)] z-50 text-[10px] pointer-events-none transform -translate-y-full"
+             className="absolute bg-slate-900/95 backdrop-blur-md border border-emerald-500/50 p-2.5 rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.8)] z-50 text-[10px] xl:text-xs pointer-events-none transform -translate-y-full transition-all duration-100"
              style={{ 
-               left: `${getX(hoverIdx)}px`, 
-               top: `${getY(data[hoverIdx].avg) - 10}px`,
-               // FIX 2: Pergeseran dinamis agar tooltip tidak nabrak batas container/layar
-               transform: `translate(${hoverIdx === data.length - 1 ? '-85%' : hoverIdx === 0 ? '-15%' : '-50%'}, -100%)`
+               left: `calc(${(hoverIdx / (data.length - 1)) * 100}%)`, 
+               top: `calc(${((getY(data[hoverIdx].avg)) / height) * 100}% - 15px)`,
+               transform: `translate(${hoverIdx === data.length - 1 ? '-95%' : hoverIdx === 0 ? '-5%' : '-50%'}, -100%)`
              }}
            >
-             {/* Segitiga panah ke bawah */}
-             <div 
-               className="absolute top-full -mt-[1px] border-solid border-t-slate-700 border-t-8 border-x-transparent border-x-8 border-b-0" 
-               style={{ 
-                 left: hoverIdx === data.length - 1 ? '85%' : hoverIdx === 0 ? '15%' : '50%',
-                 transform: 'translateX(-50%)'
-               }}
-             />
-             <h3 className="text-slate-400 font-bold uppercase tracking-wider border-b border-slate-800 pb-1 mb-1.5 text-center">{data[hoverIdx].month}</h3>
+             <h3 className="text-slate-300 font-bold uppercase tracking-wider border-b border-slate-700 pb-1 mb-1.5 text-center">{data[hoverIdx].month}</h3>
              <div className="flex justify-between items-center gap-4">
-               {/* FIX 3: Teks SLA diubah menjadi AV */}
-               <span className="font-semibold drop-shadow-md text-emerald-400">AV</span>
-               <span className="text-slate-200 font-mono font-bold text-sm">{data[hoverIdx].avg.toFixed(2)}%</span>
+               <span className="font-semibold drop-shadow-md text-emerald-400">AVG</span>
+               <span className="text-slate-100 font-mono font-bold text-sm">{data[hoverIdx].avg.toFixed(2)}%</span>
              </div>
            </div>
          )}
@@ -294,7 +300,7 @@ const ZoomGauge = ({ zoom, selProv, selKab, selKec, selKel }) => {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-4 bg-emerald-500/10 blur-[8px] rounded-full pointer-events-none" />
 
       <div className="flex flex-col items-center mb-1.5 w-full relative z-10">
-        <span className="text-[5px] xl:text-[6px] font-bold uppercase tracking-[0.2em] text-slate-400 font-mono mb-0.5">
+        <span className="text-[7px] xl:text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 font-mono mb-0.5">
           Zoom Level
         </span>
         <span className="text-[9px] xl:text-[10px] font-extrabold uppercase tracking-widest text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.8)] transition-all duration-300">
@@ -320,6 +326,135 @@ const ZoomGauge = ({ zoom, selProv, selKab, selKec, selKel }) => {
         </div>
       </div>
 
+    </div>
+  );
+};
+
+// ==========================================================
+// KOMPONEN: KARTU DASHBOARD EKSKUTIF (UKURAN DIPERBESAR)
+// ==========================================================
+const DashCard = ({ title, value, sub, icon, images, color, small }) => (
+  <div className="w-full h-full bg-slate-900/60 backdrop-blur-md border border-slate-700/50 rounded-2xl p-4 xl:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex flex-col justify-between hover:bg-slate-800/60 transition-colors overflow-hidden">
+    
+    <div className="flex justify-between items-start mb-1">
+      {/* 1. UKURAN TEKS JUDUL (Kiri Atas) */}
+      <h3 className={`${small ? 'text-xs xl:text-sm' : 'text-sm xl:text-base'} font-bold uppercase tracking-wider text-slate-400 truncate pr-1`}>
+        {title}
+      </h3>
+      
+      <div className="flex gap-1.5 xl:gap-2 items-center flex-shrink-0">
+        {images ? (
+          images.map((img, idx) => (
+            // 2. UKURAN LOGO GAMBAR (Kanan Atas) -> h-6/h-7 untuk small, h-8/h-10 untuk normal
+            <img key={idx} src={img} alt="Logo Provider" className={`${small ? 'h-6 xl:h-7' : 'h-8 xl:h-10'} w-auto object-contain drop-shadow-md`} />
+          ))
+        ) : (
+          // 3. UKURAN ICON EMOJI (Kanan Atas)
+          <span className={`${small ? 'text-2xl xl:text-3xl' : 'text-3xl xl:text-4xl'} opacity-80 drop-shadow-md`}>
+            {icon}
+          </span>
+        )}
+      </div>
+    </div>
+
+    <div className="flex items-baseline gap-1.5 xl:gap-2">
+      {/* 4. UKURAN ANGKA UTAMA (Kiri Bawah) */}
+      <span className={`${small ? 'text-3xl xl:text-4xl' : 'text-5xl xl:text-6xl'} font-mono font-extrabold ${color} drop-shadow-lg truncate`}>
+        {value}
+      </span>
+      
+      {/* 5. UKURAN ANGKA KECIL DALAM KURUNG / PERSENTASE */}
+      {sub && (
+        <span className={`${small ? 'text-xs xl:text-sm' : 'text-base xl:text-xl'} font-mono font-bold text-slate-500`}>
+          {sub}
+        </span>
+      )}
+    </div>
+    
+  </div>
+);
+
+// ==========================================================
+// KOMPONEN: DASHBOARD PIE CHART KHUSUS (DIPERBESAR)
+// ==========================================================
+const DashPieChart = ({ title, items }) => {
+  const total = items.reduce((sum, item) => sum + item.value, 0);
+  let cumulative = 0;
+  
+  const data = items.map(item => {
+    const pct = total > 0 ? ((item.value / total) * 100).toFixed(1) : 0;
+    return { ...item, pct };
+  }).filter(d => parseFloat(d.pct) > 0);
+
+  const gradient = data.map((d) => {
+    const start = cumulative;
+    cumulative += parseFloat(d.pct);
+    return `${d.color} ${start}% ${cumulative}%`;
+  }).join(', ');
+
+  return (
+    <div className="bg-slate-900/60 backdrop-blur-md border border-slate-700/50 rounded-2xl p-5 xl:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex items-center justify-center gap-5 xl:gap-8 hover:bg-slate-800/60 transition-colors h-full w-full">
+       <div 
+         className="relative w-20 h-20 xl:w-28 xl:h-28 flex items-center justify-center rounded-full shadow-[0_0_20px_rgba(0,0,0,0.6)] flex-shrink-0" 
+         style={{ background: `conic-gradient(${gradient || '#1e293b 0% 100%'})` }}
+       >
+          <div className="w-10 h-10 xl:w-14 xl:h-14 bg-slate-900 rounded-full shadow-inner" />
+       </div>
+       
+       <div className="flex flex-col gap-2 w-full max-w-[140px] xl:max-w-[180px] justify-center">
+         <h3 className="text-xs xl:text-sm font-bold uppercase tracking-wider text-slate-400 mb-1 border-b border-slate-700/50 pb-1.5">
+           {title}
+         </h3>
+         {data.map(d => (
+           <div key={d.name} className="flex justify-between items-center text-[10px] xl:text-[12px] font-bold">
+             <div className="flex items-center gap-2">
+               <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: d.color }} />
+               <span className="text-slate-300 truncate max-w-[60px] xl:max-w-[80px]" title={d.name}>{d.name}</span>
+             </div>
+             <span className="text-slate-100 font-mono text-[11px] xl:text-sm">{d.pct}%</span>
+           </div>
+         ))}
+       </div>
+    </div>
+  );
+};
+
+// ==========================================================
+// KOMPONEN: DASHBOARD BAR CHART KHUSUS (ANTI BOCOR)
+// ==========================================================
+const DashBarChart = ({ title, items }) => {
+  const maxVal = Math.max(...items.map(d => d.value), 1);
+
+  return (
+    <div className="bg-slate-900/60 backdrop-blur-md border border-slate-700/50 rounded-2xl p-4 xl:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex flex-col hover:bg-slate-800/60 transition-colors h-full w-full overflow-hidden">
+       <h3 className="text-[11px] xl:text-[13px] font-bold uppercase tracking-wider text-slate-400 mb-2 border-b border-slate-700/50 pb-1.5 flex-shrink-0">
+         {title}
+       </h3>
+       
+       <div className="flex-1 flex items-end justify-around gap-2 xl:gap-4 mt-1 pb-1 min-h-0">
+         {items.map(d => {
+           const heightPct = (d.value / maxVal) * 100;
+           return (
+             <div key={d.name} className="flex flex-col items-center justify-end h-full w-full gap-1.5 group min-h-0">
+               <span className="text-[11px] xl:text-xs font-mono font-bold text-slate-300 transition-colors group-hover:text-white flex-shrink-0">
+                 {d.value}
+               </span>
+               
+               {/* PERBAIKAN: Menggunakan flex-1 agar tiang otomatis mengisi sisa ruang secara proporsional */}
+               <div className="w-full max-w-[28px] xl:max-w-[40px] bg-slate-800/80 rounded-t-md relative flex flex-col justify-end flex-1 overflow-hidden shadow-inner border-b border-slate-600">
+                 <div 
+                   className="w-full rounded-t-md transition-all duration-1000 ease-out shadow-[0_-5px_10px_rgba(0,0,0,0.4)] group-hover:opacity-80" 
+                   style={{ height: `${heightPct}%`, backgroundColor: d.color }}
+                 />
+               </div>
+               
+               <span className="text-[9px] xl:text-[10px] font-bold text-slate-400 uppercase tracking-wider drop-shadow-md flex-shrink-0">
+                 {d.name}
+               </span>
+             </div>
+           )
+         })}
+       </div>
     </div>
   );
 };
@@ -371,6 +506,7 @@ export default function App() {
   const [selectedPieData, setSelectedPieData] = useState(null);
   const [currentZoom, setCurrentZoom] = useState(4.5);
   const [isClustered, setIsClustered] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
     fetch('./titik_site.geojson')
@@ -615,6 +751,23 @@ export default function App() {
     const offlinePct = total > 0 ? ((offline / total) * 100).toFixed(1) : 0;
 
     return { total, online, offline, avgSLA, onlinePct, offlinePct };
+  }, [filteredFeatures]);
+
+  const providerMetrics = useMemo(() => {
+    let telkom = 0, xl = 0, icon = 0, telkomIcon = 0, telkomXl = 0;
+    filteredFeatures.forEach(f => {
+      const p = String(f.properties.Provider || '').toUpperCase();
+      const hasTelkom = p.includes('TELKOM');
+      const hasXl = p.includes('XL');
+      const hasIcon = p.includes('ICON');
+      
+      if (hasTelkom && hasIcon) telkomIcon++;
+      else if (hasTelkom && hasXl) telkomXl++;
+      else if (hasTelkom && !hasXl && !hasIcon) telkom++;
+      else if (hasXl && !hasTelkom) xl++;
+      else if (hasIcon && !hasTelkom) icon++;
+    });
+    return { telkom, xl, icon, telkomIcon, telkomXl };
   }, [filteredFeatures]);
 
   const trendData = useMemo(() => {
@@ -1408,655 +1561,559 @@ export default function App() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-slate-950 text-slate-100 font-sans antialiased">
-      <div ref={mapContainer} className="absolute inset-0 z-0" />
+      <div ref={mapContainer} className={`absolute inset-0 z-0 transition-opacity duration-1000 ${showMap ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} />
 
-      {/* POPUP KETIKA TIDAK ADA DATA DI RANGE YANG DIPILIH */}
-      {!hasData && rawData.length > 0 && (
-        <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
-          <div className="bg-slate-900/95 px-10 py-8 rounded-2xl border border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.2)] flex flex-col items-center animate-pulse">
-            <span className="text-5xl mb-4">📭</span>
-            <h2 className="text-2xl font-bold tracking-widest text-red-400 uppercase drop-shadow-md">Tidak Ada Data</h2>
-            <p className="text-slate-300 text-sm mt-2 font-mono">Periode {displayRange} belum tersedia.</p>
+      {/* ==========================================================
+          LAYAR 1: EXECUTIVE DASHBOARD
+          ========================================================== */}
+      {!showMap && (
+        <div className="absolute inset-0 z-50 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950 flex flex-col pt-6 pb-6 px-8 overflow-hidden animate-in fade-in duration-500">
+          
+          {/* HEADER DASHBOARD (BAGIAN ATAS TIDAK DIUBAH TINGGINYA) */}
+          <div className="flex justify-between items-center mb-6 border-b border-slate-800/80 pb-4 flex-shrink-0">
+            <div className="flex items-center gap-4">
+              <img src="./kemendagri.svg" className="h-12 xl:h-14 w-12 xl:w-14 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]" />
+              <div>
+                <h1 className="text-2xl xl:text-3xl font-extrabold tracking-widest text-emerald-400 uppercase drop-shadow-md leading-none">
+                  JARKOMDAT
+                </h1>
+                <h2 className="text-[11px] xl:text-sm font-medium tracking-[0.3em] text-slate-400 uppercase mt-1">Executive Dashboard</h2>
+              </div>
+            </div>
+            
+            {/* Tombol Logout Sendirian di Kanan Atas */}
+            <div className="flex gap-4">
+               <button onClick={handleLogout} className="bg-red-500/20 border border-red-500/50 hover:bg-red-500 hover:text-white text-red-400 px-6 py-2 rounded-lg text-xs font-bold tracking-widest transition shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                 LOGOUT
+               </button>
+            </div>
+          </div>
+
+          {/* SISA LAYAR DIBAGI 4 BARIS SAMA RATA (MASING-MASING 25%) */}
+          <div className="flex-1 grid grid-rows-4 gap-4 xl:gap-5 min-h-[600px]">
+             
+             {/* BARIS 1: 35% Kiri (Grafik) & 65% Kanan (3 Card Utama) */}
+             <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
+                <div className="w-[35%] h-full">
+                   <DashPieChart 
+                     title="Status Site" 
+                     items={[
+                       { name: 'Online', value: metrics.online, color: '#10b981' },
+                       { name: 'Offline', value: metrics.offline, color: '#ef4444' }
+                     ]} 
+                   />
+                </div>
+                <div className="w-[65%] flex flex-row gap-4 xl:gap-5 h-full">
+                   <div className="flex-1 min-w-0"><DashCard title="Total Site" value={metrics.total} icon="🏢" color="text-blue-400" /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Online Site" value={metrics.online} sub={`(${metrics.onlinePct}%)`} icon="✅" color="text-emerald-400" /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Offline Site" value={metrics.offline} sub={`(${metrics.offlinePct}%)`} icon="❌" color="text-red-400" /></div>
+                </div>
+             </div>
+
+             {/* BARIS 2: 35% Kiri (Grafik) & 65% Kanan (5 Card Provider Eksklusif) */}
+             <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
+                <div className="w-[35%] h-full">
+                   <DashPieChart 
+                     title="Provider" 
+                     items={[
+                       { name: 'Telkom', value: providerMetrics.telkom, color: '#ef4444' },
+                       { name: 'XL', value: providerMetrics.xl, color: '#f59e0b' },
+                       { name: 'Icon', value: providerMetrics.icon, color: '#2dd4bf' },
+                       { name: 'Telkom-Icon', value: providerMetrics.telkomIcon, color: '#38bdf8' },
+                       { name: 'Telkom-XL', value: providerMetrics.telkomXl, color: '#c084fc' }
+                     ]} 
+                   />
+                </div>
+                <div className="w-[65%] flex flex-row gap-3 xl:gap-4 h-full">
+                   <div className="flex-1 min-w-0"><DashCard title="Telkom" value={providerMetrics.telkom} images={['./Telkom.png']} color="text-red-500" small /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="XL" value={providerMetrics.xl} images={['./XL.png']} color="text-amber-500" small /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Icon" value={providerMetrics.icon} images={['./Icon.png']} color="text-teal-400" small /></div>
+                   <div className="flex-1 min-w-0"><DashCard 
+                      title={<span className="flex flex-col leading-tight"><span>Telkom</span><span>& Icon</span></span>} 
+                      value={providerMetrics.telkomIcon} 
+                      images={['./Telkom.png', './Icon.png']} 
+                      color="text-sky-400" 
+                      small 
+                    /></div>
+                   <div className="flex-1 min-w-0"><DashCard 
+                    title={<span className="flex flex-col leading-tight"><span>Telkom</span><span>& XL</span></span>} 
+                    value={providerMetrics.telkomXl} 
+                    images={['./Telkom.png', './XL.png']} 
+                    color="text-purple-400" 
+                    small 
+                  /></div>
+                </div>
+             </div>
+
+             {/* BARIS 3: 35% Kiri (Grafik) & 65% Kanan (3 Card Total Provider Gabungan) */}
+             <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
+                <div className="w-[35%] h-full">
+                   <DashBarChart 
+                     title="Komparasi Total" 
+                     items={[
+                       { name: 'Telkom', value: providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon, color: '#ef4444' },
+                       { name: 'XL', value: providerMetrics.xl + providerMetrics.telkomXl, color: '#f59e0b' },
+                       { name: 'Icon', value: providerMetrics.icon + providerMetrics.telkomIcon, color: '#2dd4bf' }
+                     ]} 
+                   />
+                </div>
+                <div className="w-[65%] flex flex-row gap-4 xl:gap-5 h-full">
+                   <div className="flex-1 min-w-0">
+                     <DashCard title="Total Telkom" value={providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon} images={['./Telkom.png']} color="text-red-500" />
+                   </div>
+                   <div className="flex-1 min-w-0">
+                     <DashCard title="Total XL" value={providerMetrics.xl + providerMetrics.telkomXl} images={['./XL.png']} color="text-amber-500" />
+                   </div>
+                   <div className="flex-1 min-w-0">
+                     <DashCard title="Total Icon" value={providerMetrics.icon + providerMetrics.telkomIcon} images={['./Icon.png']} color="text-teal-400" />
+                   </div>
+                </div>
+             </div>
+
+             {/* BARIS 4: 80% Kiri (Trend Chart) & 20% Kanan (Tombol Buka Peta) */}
+             <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
+                {/* 80% Kiri */}
+                <div className="w-[80%] h-full">
+                   <TrendChart data={trendData} displayRange={displayRange} />
+                </div>
+                {/* 20% Kanan */}
+                <div className="w-[20%] h-full">
+                   <button 
+                     onClick={() => setShowMap(true)} 
+                     className="w-full h-full bg-gradient-to-br from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 text-slate-950 text-sm xl:text-lg font-extrabold tracking-widest uppercase rounded-2xl transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:shadow-[0_0_60px_rgba(16,185,129,0.6)] group flex flex-col items-center justify-center gap-2 xl:gap-4 border border-emerald-400 focus:outline-none"
+                   >
+                      <span className="text-4xl xl:text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-md">🗺️</span>
+                      <span className="text-center px-2">Buka Mode Peta</span>
+                   </button>
+                </div>
+             </div>
+
           </div>
         </div>
       )}
 
-      {/* HIGHLIGHT UTAMA & TOGGLE CLUSTER */}
-      <div className="absolute top-4 left-4 z-10 pointer-events-auto flex items-stretch gap-3">
-        
-        {/* CARD AVG AVAILABILITY */}
-        <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-md px-5 py-3 rounded-xl border border-sky-500/50 shadow-[0_0_25px_rgba(14,165,233,0.25)] flex flex-col justify-center border-l-4 border-l-sky-400 relative overflow-hidden group">
-          <div className="absolute inset-0 bg-sky-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-sky-200/80 mb-0.5 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" /> 
-            AVG. AVAILABILITY
-          </span>
-          <span className="text-2xl font-mono font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-300 leading-tight">
-            {metrics.avgSLA.toFixed(2)}%
-          </span>
-        </div>
-
-        {/* TOGGLE CLUSTER SWITCH (Rata Atas) */}
-        <div className="bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-700 shadow-xl flex items-center justify-center gap-3 self-start mt-0.5">
-          <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Peta Cluster</span>
-          <div className="flex items-center gap-1.5">
-            {/* Label OFF */}
-            <span className={`text-[8px] font-bold tracking-widest ${!isClustered ? 'text-slate-300' : 'text-slate-600'}`}>
-              OFF
-            </span>
-            
-            {/* Tombol Switcher */}
-            <button 
-              onClick={() => setIsClustered(!isClustered)}
-              className={`w-8 h-4 rounded-full relative transition-colors duration-300 focus:outline-none shadow-inner ${isClustered ? 'bg-emerald-500' : 'bg-slate-700'}`}
-            >
-              {/* Lingkaran Putih (Knob) */}
-              <div className={`absolute top-[2px] left-[2px] bg-white w-3 h-3 rounded-full shadow transition-transform duration-300 ${isClustered ? 'transform translate-x-4' : ''}`} />
-            </button>
-            
-            {/* Label ON */}
-            <span className={`text-[8px] font-bold tracking-widest ${isClustered ? 'text-emerald-400' : 'text-slate-600'}`}>
-              ON
-            </span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* SISI KANAN ATAS: BASEMAP & TREND CHART */}
-      <div className="absolute top-4 right-4 z-10 pointer-events-none flex flex-col items-end gap-3">
-        {/* Kontainer baris atas untuk Zoom, Basemap, dan Logout */}
-        <div className="flex items-center gap-2 pointer-events-auto">
-          
-          {/* GAUGE METER ZOOM LEVEL (PINDAHAN) */}
-          <ZoomGauge 
-            zoom={currentZoom} 
-            selProv={selProv}
-            selKab={selKab}
-            selKec={selKec}
-            selKel={selKel}
-          />
-
-          {/* BASEMAP SWITCHER */}
-          <div className="bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 shadow-xl flex gap-1">
-            <button onClick={() => setCurrentBasemap('dark')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'dark' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Dark</button>
-            <button onClick={() => setCurrentBasemap('osm')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'osm' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Light</button>
-          </div>
-
-          {/* TOMBOL LOGOUT BARU */}
-          <button 
-            onClick={handleLogout} 
-            className="bg-red-500/50 border border-red-500/30 text-white-400 hover:bg-red-500 hover:text-slate-950 p-1.5 px-3 rounded-xl text-xs font-bold tracking-wider transition-colors shadow-xl h-full flex items-center"
-            title="Keluar dari Sistem"
-          >
-            LOGOUT
-          </button>
-          
-        </div>
-        
-        <TrendChart data={trendData} />
-      </div>
-
-      {/* TENGAH ATAS: JARKOMDAT MONITORING SYSTEM & PANEL FILTER */}
-      <div className="absolute top-0 left-0 w-full z-20 flex flex-col items-center pointer-events-none">
-        <button 
-          onClick={() => setIsFilterOpen(!isFilterOpen)} 
-          className={`relative z-30 bg-slate-900/95 backdrop-blur-md px-5 py-2.5 border-x border-b border-emerald-500/40 shadow-[0_4px_20px_rgba(16,185,129,0.15)] pointer-events-auto flex items-center gap-4 transition-all hover:bg-slate-800 cursor-pointer group ${isFilterOpen ? 'rounded-b-none' : 'rounded-b-2xl'}`}
-        >
-          <img src="./kemendagri.svg" alt="Logo Kemendagri" className="h-10 w-10 object-contain flex-shrink-0 drop-shadow-md" />
-          <h1 className="text-sm font-bold tracking-widest text-emerald-400 uppercase drop-shadow-md text-center select-none">
-            JARKOMDAT MONITORING SYSTEM
-          </h1>
-          <div className="bg-slate-800/80 w-6 h-6 flex items-center justify-center rounded text-xs text-slate-400 group-hover:text-emerald-400 transition font-mono flex-shrink-0">
-            {isFilterOpen ? '✕' : '▼'}
-          </div>
-        </button>
-
-        <div className={`relative z-20 pointer-events-auto transition-all duration-300 ease-out transform origin-top overflow-visible ${isFilterOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full absolute pointer-events-none'}`}>
-          <div className="bg-slate-900/95 backdrop-blur-md p-3 px-6 rounded-b-xl border-x border-b border-emerald-500/40 shadow-2xl flex flex-wrap justify-center items-center gap-3 text-xs -mt-[1px]">
-            
-            {/* 1. SEARCH INPUT */}
-            <input 
-              type="text" 
-              placeholder="Search ID/Name..." 
-              className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 w-44 text-slate-200 focus:outline-none focus:border-emerald-500 transition shadow-inner text-xs font-semibold" 
-              value={searchId} 
-              onChange={(e) => setSearchId(e.target.value)} 
-            />
-            
-            {/* 2. FILTER: TIPE KONEKSI (MULTI-SELECT BARU) */}
-            <div className="relative">
-              <button 
-                type="button"
-                onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
-                className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-300 shadow-inner flex justify-between items-center w-48 text-left cursor-pointer hover:border-slate-600 transition text-xs font-semibold"
-              >
-                <span className="truncate pr-2">
-                  {selectedTypes.length === 0 ? 'Tipe Koneksi (All)' : `Tipe Koneksi (${selectedTypes.length} Terpilih)`}
-                </span>
-                <span className="text-[9px] text-slate-500 font-mono flex-shrink-0">{isTypeDropdownOpen ? '▲' : '▼'}</span>
-              </button>
-
-              {isTypeDropdownOpen && (
-                <div className="absolute left-0 mt-1 w-52 bg-slate-900 border border-slate-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-2 z-50 max-h-60 overflow-y-auto border-t-2 border-t-emerald-500 custom-scrollbar">
-                  {uniqueTypes.map(t => {
-                    const isChecked = selectedTypes.includes(t);
-                    return (
-                      <label key={t} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-850 rounded cursor-pointer select-none text-slate-300 transition-colors">
-                        <input 
-                          type="checkbox" 
-                          checked={isChecked}
-                          onChange={() => {
-                            if (isChecked) {
-                              setSelectedTypes(selectedTypes.filter(item => item !== t));
-                            } else {
-                              setSelectedTypes([...selectedTypes, t]);
-                            }
-                          }}
-                          className="accent-emerald-500 h-3.5 w-3.5 rounded border-slate-700 bg-slate-950 cursor-pointer"
-                        />
-                        <span className="text-xs font-semibold truncate" title={t}>{t}</span>
-                      </label>
-                    );
-                  })}
-                  {selectedTypes.length > 0 && (
-                    <button 
-                      type="button" 
-                      onClick={() => setSelectedTypes([])}
-                      className="w-full text-center text-[10px] text-red-400 hover:text-red-300 font-bold border-t border-slate-800 pt-2 mt-1.5 cursor-pointer"
-                    >
-                      ✕ Bersihkan Pilihan
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            {/* 3. FILTER: PROVIDER (MULTI-SELECT LAMA YANG KEMBALI) */}
-            <div className="relative">
-              <button 
-                type="button"
-                onClick={() => setIsProviderDropdownOpen(!isProviderDropdownOpen)}
-                className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-300 shadow-inner flex justify-between items-center w-48 text-left cursor-pointer hover:border-slate-600 transition text-xs font-semibold"
-              >
-                <span className="truncate pr-2">
-                  {selectedProviders.length === 0 ? 'Provider (All)' : `Provider (${selectedProviders.length} Terpilih)`}
-                </span>
-                <span className="text-[9px] text-slate-500 font-mono flex-shrink-0">{isProviderDropdownOpen ? '▲' : '▼'}</span>
-              </button>
-
-              {isProviderDropdownOpen && (
-                <div className="absolute left-0 mt-1 w-52 bg-slate-900 border border-slate-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-2 z-50 max-h-60 overflow-y-auto border-t-2 border-t-emerald-500 custom-scrollbar">
-                  {uniqueProviders.map(p => {
-                    const isChecked = selectedProviders.includes(p);
-                    return (
-                      <label key={p} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-850 rounded cursor-pointer select-none text-slate-300 transition-colors">
-                        <input 
-                          type="checkbox" 
-                          checked={isChecked}
-                          onChange={() => {
-                            if (isChecked) {
-                              setSelectedProviders(selectedProviders.filter(item => item !== p));
-                            } else {
-                              setSelectedProviders([...selectedProviders, p]);
-                            }
-                          }}
-                          className="accent-emerald-500 h-3.5 w-3.5 rounded border-slate-700 bg-slate-950 cursor-pointer"
-                        />
-                        <span className="text-xs font-semibold truncate" title={p}>{p}</span>
-                      </label>
-                    );
-                  })}
-                  {selectedProviders.length > 0 && (
-                    <button 
-                      type="button" 
-                      onClick={() => setSelectedProviders([])}
-                      className="w-full text-center text-[10px] text-red-400 hover:text-red-300 font-bold border-t border-slate-800 pt-2 mt-1.5 cursor-pointer"
-                    >
-                      ✕ Bersihkan Pilihan
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 4. FILTER: STRUKTUR (MULTI-SELECT BARU) */}
-            <div className="relative">
-              <button 
-                type="button"
-                onClick={() => setIsStructureDropdownOpen(!isStructureDropdownOpen)}
-                className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-300 shadow-inner flex justify-between items-center w-48 text-left cursor-pointer hover:border-slate-600 transition text-xs font-semibold"
-              >
-                <span className="truncate pr-2">
-                  {selectedStructures.length === 0 ? 'Struktur (All)' : `Struktur (${selectedStructures.length} Terpilih)`}
-                </span>
-                <span className="text-[9px] text-slate-500 font-mono flex-shrink-0">{isStructureDropdownOpen ? '▲' : '▼'}</span>
-              </button>
-
-              {isStructureDropdownOpen && (
-                <div className="absolute left-0 mt-1 w-52 bg-slate-900 border border-slate-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-2 z-50 max-h-60 overflow-y-auto border-t-2 border-t-emerald-500 custom-scrollbar">
-                  {[
-                     ...strukturOrder.filter(s => uniqueStructures.includes(s)).map(s => ({ value: s, label: strukturDisplay[s] })),
-                     ...uniqueStructures.filter(s => !strukturOrder.includes(s) && s !== 'N/A' && s !== '').map(s => ({ value: s, label: s }))
-                  ].map(opt => {
-                    const isChecked = selectedStructures.includes(opt.value);
-                    return (
-                      <label key={opt.value} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-850 rounded cursor-pointer select-none text-slate-300 transition-colors">
-                        <input 
-                          type="checkbox" 
-                          checked={isChecked}
-                          onChange={() => {
-                            if (isChecked) {
-                              setSelectedStructures(selectedStructures.filter(item => item !== opt.value));
-                            } else {
-                              setSelectedStructures([...selectedStructures, opt.value]);
-                            }
-                          }}
-                          className="accent-emerald-500 h-3.5 w-3.5 rounded border-slate-700 bg-slate-950 cursor-pointer"
-                        />
-                        <span className="text-xs font-semibold truncate" title={opt.label}>{opt.label}</span>
-                      </label>
-                    );
-                  })}
-                  {selectedStructures.length > 0 && (
-                    <button 
-                      type="button" 
-                      onClick={() => setSelectedStructures([])}
-                      className="w-full text-center text-[10px] text-red-400 hover:text-red-300 font-bold border-t border-slate-800 pt-2 mt-1.5 cursor-pointer"
-                    >
-                      ✕ Bersihkan Pilihan
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* LACI INFORMASI DETAIL */}
-      {/* Ketinggian disesuaikan menjadi h-fit agar elastis mengikuti kontennya yang kini ringkas */}
-      <div className={`absolute top-[40%] -translate-y-1/2 left-0 z-30 flex items-center transition-transform duration-300 ease-in-out ${isDetailOpen ? 'translate-x-0' : '-translate-x-[22rem]'}`}>
-        
-        {/* PERUBAHAN 2: max-h-[70vh] diubah menjadi max-h-[60vh] agar laci tidak terlalu memanjang ke bawah */}
-        <div className="w-[22rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-br-2xl border-y border-r border-emerald-500/40 shadow-[20px_0_30px_rgba(0,0,0,0.5)] h-fit max-h-[60vh] overflow-y-auto pointer-events-auto flex flex-col custom-scrollbar">
-          
-          <h2 className="text-base font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-3 flex items-center gap-2 flex-shrink-0">
-            <span className="text-base">📋</span> Panel Informasi Detail
-          </h2>
-          
-          <div className="flex-1 overflow-y-auto pr-1">
-            {clickedSite ? (
-              <div className="space-y-2.5 text-sm pb-2">
-                
-                {/* BARIS 1: Site Name & Site ID Berdampingan */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] uppercase text-slate-500 block font-semibold">Site Name</label>
-                    <p className="text-base font-bold text-emerald-400 leading-tight truncate" title={clickedSite["NAMA SITE"] || clickedSite.text_site}>{clickedSite["NAMA SITE"] || clickedSite.text_site || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-[11px] uppercase text-slate-500 block font-semibold">Site ID</label>
-                    <p className="font-mono font-bold text-slate-200 text-base truncate">{clickedSite.kodesite || '-'}</p>
-                  </div>
-                </div>
-                
-                {/* BARIS 2: Availability & Struktur */}
-                <div className="grid grid-cols-2 gap-3 border-y border-slate-800/60 py-2.5 my-2 bg-slate-950/40 p-2 rounded">
-                  <div>
-                    <label className="text-[11px] uppercase text-slate-500 block">Availability</label>
-                    <p className={`font-mono font-bold text-xl ${getAVColorClass(clickedSite.AV)}`}>
-                      {(parseSLA(clickedSite.AV) * 100).toFixed(2)}%
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-[11px] uppercase text-slate-500 block">Struktur</label>
-                    <p className="font-semibold text-slate-300 truncate">{renderField('struct', clickedSite.STRUKTUR)}</p>
-                  </div>
-                </div>
-                
-                {/* BARIS 3: Provinsi & Kecamatan Berdampingan */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] uppercase text-slate-500 block">Provinsi</label>
-                    <p className="text-slate-300 font-semibold truncate" title={renderField('prov', clickedSite.nama_prop || clickedSite.PROVINSI || clickedSite.provinsi)}>
-                      {renderField('prov', clickedSite.nama_prop || clickedSite.PROVINSI || clickedSite.provinsi)}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-[11px] uppercase text-slate-500 block">Kecamatan</label>
-                    <p className="text-slate-300 font-semibold truncate" title={renderField('kec', clickedSite.nama_kec || clickedSite.KECAMATAN || clickedSite.kecamatan)}>
-                      {renderField('kec', clickedSite.nama_kec || clickedSite.KECAMATAN || clickedSite.kecamatan)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* BARIS 4: Kabupaten & Kelurahan Berdampingan */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] uppercase text-slate-500 block">Kabupaten / Kota</label>
-                    <p className="text-slate-300 font-semibold truncate" title={renderField('kab', clickedSite.nama_kab || clickedSite.KABUPATEN || clickedSite.kabupaten || clickedSite["KABUPATEN/KOTA"])}>
-                      {renderField('kab', clickedSite.nama_kab || clickedSite.KABUPATEN || clickedSite.kabupaten || clickedSite["KABUPATEN/KOTA"])}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-[11px] uppercase text-slate-500 block">Kelurahan / Desa</label>
-                    <p className="text-slate-300 font-semibold truncate" title={renderField('kel', clickedSite.nama_kel || clickedSite.KELURAHAN || clickedSite.kelurahan || clickedSite.DESA)}>
-                      {renderField('kel', clickedSite.nama_kel || clickedSite.KELURAHAN || clickedSite.kelurahan || clickedSite.DESA)}
-                    </p>
-                  </div>
-                </div>
-                
-                {/* PROVIDER 1 */}
-                {clickedSite.Provider_1 && clickedSite.Provider_1 !== '-' && clickedSite.Provider_1 !== 'nan' && (
-                  <div className="pt-2.5 mt-1 border-t border-slate-800/80">
-                    <div className={`text-[14px] font-bold mb-1 flex items-center gap-1.5 ${getProviderColor(clickedSite.Provider_1).text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${getProviderColor(clickedSite.Provider_1).bg}`}></span>
-                      {clickedSite.Provider_1.toUpperCase()}
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 text-[11px] pl-2 border-l border-slate-800">
-                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_1 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_1 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_1 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_1 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_1)}`}>{clickedSite.AV_1 || '-'}</p></div>
-                    </div>
-                  </div>
-                )}
-
-                {/* PROVIDER 2 */}
-                {clickedSite.Provider_2 && clickedSite.Provider_2 !== '-' && clickedSite.Provider_2 !== 'nan' && (
-                  <div className="pt-2.5 mt-1 border-t border-slate-800/80">
-                    <div className={`text-[14px] font-bold mb-1 flex items-center gap-1.5 ${getProviderColor(clickedSite.Provider_2).text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${getProviderColor(clickedSite.Provider_2).bg}`}></span>
-                      {clickedSite.Provider_2.toUpperCase()}
-                    </div>
-                    <div className="grid grid-cols-4 gap-2 text-[11px] pl-2 border-l border-slate-800">
-                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_2 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_2 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_2 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_2 || '-'}</p></div>
-                      <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_2)}`}>{clickedSite.AV_2 || '-'}</p></div>
-                    </div>
-                  </div>
-                )}
-
-                {/* AVG. AV SUM BOX (Hanya muncul jika dual link aktif) */}
-                {clickedSite.AV_Rata_Rata && clickedSite.AV_Rata_Rata !== '-' && clickedSite.AV_Rata_Rata !== 'nan' && clickedSite.Provider_2 !== '-' && (
-                  <div className="pt-2 mt-1 border-t border-slate-800/80">
-                    <div className="flex justify-between items-center bg-slate-950/60 p-2 rounded-lg border border-slate-800/80 shadow-inner">
-                      <span className="text-[14px] uppercase text-slate-400 font-bold tracking-wider">AVG. AV</span>
-                      <span className={`font-mono font-bold text-lg drop-shadow-md ${getAVColorClass(clickedSite.AV_Rata_Rata)}`}>
-                        {clickedSite.AV_Rata_Rata}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-              </div>
-            ) : 
-            clickedRegion ? (
-              <div className="space-y-3 text-xs">
-                <div className="bg-sky-500/10 border border-sky-500/20 p-2.5 rounded-lg mb-1"><p className="text-sky-400 italic">Data Wilayah Administrasi</p></div>
-                <div><label className="text-[10px] uppercase text-slate-500 block">Provinsi</label><p className="text-sm font-bold text-slate-200">{clickedRegion.nama_prop || '-'}</p></div>
-                <div><label className="text-[10px] uppercase text-slate-500 block">Kabupaten / Kota</label><p className="text-xs font-semibold text-slate-300">{clickedRegion.nama_kab || '-'}</p></div>
-                <div><label className="text-[10px] uppercase text-slate-500 block">Kecamatan</label><p className="text-xs font-semibold text-slate-300">{clickedRegion.nama_kec || '-'}</p></div>
-                <div><label className="text-[10px] uppercase text-slate-500 block">Kelurahan / Desa</label><p className="text-xs font-semibold text-slate-300">{clickedRegion.nama_kel || '-'}</p></div>
-              </div>
-            ) : 
-            (
-              <div className="h-full flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-800 rounded-lg text-slate-500 my-auto"><span className="text-xl mb-1">👆</span><p className="text-[11px]">Klik titik site atau wilayah pada peta.</p></div>
-            )}
-          </div>
-        </div>
-
-        <button onClick={() => setIsDetailOpen(!isDetailOpen)} className="bg-slate-900/95 border-y border-r border-emerald-500/40 py-5 px-1.5 rounded-r-xl pointer-events-auto hover:bg-slate-800 transition shadow-[5px_0_15px_rgba(16,185,129,0.15)] flex flex-col items-center justify-center gap-3 cursor-pointer group">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mb-1" />
-          <span className="text-slate-300 group-hover:text-emerald-400 font-bold tracking-[0.2em] uppercase text-[10px] transition-colors" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>Informasi Detail</span>
-          <span className="text-slate-500 text-[10px] font-mono mt-1">{isDetailOpen ? '◀' : '▶'}</span>
-        </button>
-      </div>
-
-      {/* LACI FILTER HIERARKI MENGGUNAKAN CUSTOM SELECT */}
-      <div className={`absolute top-[47.5%] -translate-y-1/2 right-0 z-30 flex flex-row-reverse items-center transition-transform duration-300 ease-in-out ${isHierarchyOpen ? 'translate-x-0' : 'translate-x-[20rem]'}`}>
-        <div className="w-[20rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-bl-2xl border-y border-l border-emerald-500/40 shadow-[-20px_0_30px_rgba(0,0,0,0.5)] h-fit max-h-[55vh] pointer-events-auto flex flex-col">
-          <h2 className="text-base font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-4 flex items-center gap-2"><span className="text-base">🎛️</span> Filter Hierarki</h2>
-          
-          <div className="space-y-3 flex-1 overflow-visible pr-1 pb-1">
-            <div className="space-y-1.5">
-              <label className="text-[12px] text-slate-500 uppercase font-medium block">Provinsi</label>
-              <CustomSelect value={selProv} onChange={(val) => handleHierarchyChange('prov', val)} options={listProvinsi} placeholder="-- Select Provinsi --" />
-            </div>
-            <div className="space-y-1.5 mt-2">
-              <label className="text-[12px] text-slate-500 uppercase font-medium block">Kabupaten / Kota</label>
-              <CustomSelect value={selKab} onChange={(val) => handleHierarchyChange('kab', val)} options={listKabupaten} placeholder="-- Select Kabupaten --" disabled={!selProv} />
-            </div>
-            <div className="space-y-1.5 mt-2">
-              <label className="text-[12px] text-slate-500 uppercase font-medium block">Kecamatan</label>
-              <CustomSelect value={selKec} onChange={(val) => handleHierarchyChange('kec', val)} options={listKecamatan} placeholder="-- Select Kecamatan --" disabled={!selKab} />
-            </div>
-            <div className="space-y-1.5 mt-2 mb-2">
-              <label className="text-[12px] text-slate-500 uppercase font-medium block">Kelurahan / Desa</label>
-              <CustomSelect value={selKel} onChange={(val) => handleHierarchyChange('kel', val)} options={listKelurahan} placeholder="-- Select Kelurahan --" disabled={!selKec} />
-            </div>
-            
-            <div className="mt-4 pt-4 border-t border-slate-800 pb-1">
-              <p className="text-[10px] text-slate-500 italic text-center leading-relaxed">Pilih opsi di atas untuk auto-zoom ke poligon wilayah.</p>
-            </div>
-          </div>
-        </div>
-
-        <button onClick={() => setIsHierarchyOpen(!isHierarchyOpen)} className="bg-slate-900/95 border-y border-l border-emerald-500/40 py-5 px-1.5 rounded-l-xl pointer-events-auto hover:bg-slate-800 transition shadow-[-5px_0_15px_rgba(16,185,129,0.15)] flex flex-col items-center justify-center gap-3 cursor-pointer group">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mb-1" />
-          <span className="text-slate-300 group-hover:text-emerald-400 font-bold tracking-[0.2em] uppercase text-[10px] transition-colors" style={{ writingMode: 'vertical-rl' }}>Filter Hierarki</span>
-          <span className="text-slate-500 text-[12px] font-mono mt-1">{isHierarchyOpen ? '▶' : '◀'}</span>
-        </button>
-      </div>
-
       {/* ==========================================================
-          5 KARTU BAWAH (DIPENDEKKAN & POPUP RATA ATAS)
+          LAYAR 2: UI KONTROL PETA (DIBUNGKUS SHOWMAP)
           ========================================================== */}
-      <div className="absolute bottom-10 left-4 right-4 z-10 pointer-events-none">
-        
-        {/* Tinggi kontainer diturunkan menjadi 160px-180px */}
-        <div className="flex flex-row gap-3 xl:gap-4 pointer-events-auto h-[160px] xl:h-[180px] w-full items-stretch">
-          
-          {/* SISI KIRI (1/3 LAYAR) */}
-          <div className="w-1/3 flex flex-col gap-2.5 h-full">
-            
-            {/* CARD 1, 2, 3 */}
-            <div className="flex gap-2.5 flex-1 min-h-0">
-              <div onClick={() => setSelectedModal('total')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
-                <div className="text-[11px] xl:text-[12px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-blue-400 transition leading-tight">1. Total Site</div>
-                <div className="flex flex-col mt-auto">
-                  <span className="text-2xl xl:text-3xl font-bold font-mono text-white leading-none mb-1">{metrics.total}</span>
-                  <span className="text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
-                </div>
-              </div>
-
-              <div onClick={() => setSelectedModal('online')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-emerald-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
-                <div className="text-[11px] xl:text-[12px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-emerald-400 transition leading-tight">2. Online Site</div>
-                <div className="flex flex-col mt-auto">
-                  <div className="flex items-baseline gap-1.5 mb-1">
-                    <span className="text-2xl xl:text-3xl font-bold font-mono text-emerald-400 leading-none">{metrics.online}</span>
-                    <span className="text-[13px] xl:text-[14px] font-mono text-emerald-500/80 font-bold">({metrics.onlinePct}%)</span>
-                  </div>
-                  <span className="text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
-                </div>
-              </div>
-
-              <div onClick={() => setSelectedModal('offline')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-red-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
-                <div className="text-[11px] xl:text-[12px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-red-400 transition leading-tight">3. Offline Site</div>
-                <div className="flex flex-col mt-auto">
-                  <div className="flex items-baseline gap-1.5 mb-1">
-                    <span className="text-2xl xl:text-3xl font-bold font-mono text-red-400 leading-none">{metrics.offline}</span>
-                    <span className="text-[13px] xl:text-[14px] font-mono text-red-500/80 font-bold">({metrics.offlinePct}%)</span>
-                  </div>
-                  <span className="text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
-                </div>
-              </div>
-            </div>
-
-            {/* CARD 5: Filter Waktu (Ketinggian diperkecil) */}
-            <div className="h-[65px] bg-slate-900/80 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between relative group">
-              <div className="flex justify-between items-center mb-1">
-                <div className="text-[11px] xl:text-[13px] uppercase font-bold tracking-wider text-slate-400 leading-tight">5. Filter Waktu</div>
-                <CustomSelect 
-                  value={selectedYear} 
-                  onChange={setSelectedYear} 
-                  options={uniqueYears} 
-                  placeholder="Year"
-                  className="w-20"
-                  menuUp={true}
-                />
-              </div>
-              
-              <div className="flex flex-col w-full mt-auto">
-                <div className="relative h-1 bg-slate-800 rounded-lg w-full flex items-center">
-                  <div className="absolute h-full bg-emerald-500 rounded-lg pointer-events-none transition-all duration-100" style={{ width: `${((selectedMonth - 1) / 11) * 100}%` }} />
-                  <input type="range" min="1" max="12" value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))} disabled={uniqueYears.length === 0} className="absolute w-full h-full appearance-none bg-transparent cursor-pointer z-20 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-400 [&::-webkit-slider-thumb]:appearance-none" />
-                </div>
-                
-                <div className="flex justify-between text-[7px] text-slate-500 mt-1.5 font-mono px-1">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
-                    <span key={m} className={m === selectedMonth ? 'text-emerald-400 font-bold scale-125 transition-transform' : 'transition-transform'}>
-                      {String(m).padStart(2, '0')}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* SISI KANAN: CARD 4 DATA SUMMARY */}
-          <div className={`transition-all duration-500 ease-in-out ${selectedPieData ? 'w-1/2' : 'w-2/3'} h-full bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col relative`}>
-            <div className="text-[12px] xl:text-[13px] uppercase font-bold tracking-wider text-slate-400 mb-1">4. Data Summary</div>
-            
-            <div className="flex justify-center gap-2 xl:gap-4 items-start flex-1 w-full overflow-visible mt-1">
-              <DonutStat title="Kategori Koneksi" data={summaryData.tipe} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Kategori Koneksi'} />
-              <DonutStat title="Provider Utama" data={summaryData.provider} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Provider Utama'} />
-              <DonutStat title="Struktur" data={summaryData.struktur} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Struktur'} />
-              <DonutStat title="Kapasitas Bandwidth" data={summaryData.bandwidth} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Kapasitas Bandwidth'} />
-            </div>
-          </div>
-
-          {/* POPUP CARD 4 (RATA ATAS & H-FIT) */}
-          {selectedPieData && (
-            <div className="w-1/6 h-fit max-h-full overflow-y-auto bg-slate-900/95 backdrop-blur-lg p-3 xl:p-4 rounded-xl border border-blue-500/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 self-start custom-scrollbar">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-[11px] xl:text-[12px] font-bold text-blue-400 uppercase leading-tight pr-2">{selectedPieData.title}</h3>
-                <button 
-                  onClick={() => setSelectedPieData(null)} 
-                  className="bg-red-500 hover:bg-red-600 text-white w-5 h-5 rounded flex items-center justify-center transition-all shadow-[0_0_10px_rgba(239,68,68,0.4)] flex-shrink-0"
-                  title="Tutup Panel"
-                >
-                  <span className="text-[12px]">✕</span>
-                </button>
-              </div>
-              <div className="flex flex-col gap-0"> 
-                {selectedPieData.data.length > 0 ? (
-                  selectedPieData.data.map((d, i) => {
-                    const colors = ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ef4444', '#a855f7'];
-                    const color = colors[i % colors.length];
-                    return (
-                      <div key={d.name} className="flex justify-between items-center border-b border-slate-800/30 py-[0px] gap-1 hover:bg-slate-800/30 transition-colors"> 
-                        <div className="flex items-center gap-1 min-w-0">
-                          <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                          <span className="text-[11px] xl:text-[12px] font-bold truncate" style={{ color }} title={d.name}>{d.name}</span>
-                        </div>
-                        <span className="text-[11px] font-mono font-bold flex-shrink-0 text-slate-200">
-                          {d.count} <span style={{ color }} className="font-medium text-[12px] opacity-80">({d.pct}%)</span>
-                        </span>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center py-2">
-                    <span className="text-[9px] font-bold text-red-400 uppercase">NO DATA</span>
-                  </div>
-                )}
+      {showMap && (
+        <>
+          {/* POPUP NO DATA */}
+          {!hasData && rawData.length > 0 && (
+            <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
+              <div className="bg-slate-900/95 px-10 py-8 rounded-2xl border border-red-500/50 shadow-[0_0_50px_rgba(239,68,68,0.2)] flex flex-col items-center animate-pulse">
+                <span className="text-5xl mb-4">📭</span>
+                <h2 className="text-2xl font-bold tracking-widest text-red-400 uppercase drop-shadow-md">Tidak Ada Data</h2>
+                <p className="text-slate-300 text-sm mt-2 font-mono">Periode {displayRange} belum tersedia.</p>
               </div>
             </div>
           )}
 
-        </div>
-      </div>
-
-      {/* MODAL POPUP (RAW DATA TABLE) */}
-      {selectedModal && (
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-          <div className="bg-slate-900 w-full max-w-6xl h-[80vh] rounded-2xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">Raw Data Table — {selectedModal.toUpperCase()} SITES</h3>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">Records Found: {modalTableData.length} lines</p>
-              </div>
-              
-              {/* Pembungkus Tombol Export & Close */}
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={handleExportExcel} 
-                  className="bg-emerald-600/20 border border-emerald-500/50 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-semibold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-2"
-                >
-                  <span>⬇</span> Export Excel
-                </button>
-                <button 
-                  onClick={() => setSelectedModal(null)} 
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition font-semibold"
-                >
-                  ✕ Close Table
-                </button>
-              </div>
+          {/* HIGHLIGHT UTAMA & TOGGLE CLUSTER */}
+          <div className="absolute top-4 left-4 z-10 pointer-events-auto flex items-stretch gap-3">
+            <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-md px-5 py-3 rounded-xl border border-sky-500/50 shadow-[0_0_25px_rgba(14,165,233,0.25)] flex flex-col justify-center border-l-4 border-l-sky-400 relative overflow-hidden group">
+              <div className="absolute inset-0 bg-sky-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-sky-200/80 mb-0.5 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" /> AVG. AVAILABILITY
+              </span>
+              <span className="text-2xl font-mono font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-300 leading-tight">
+                {metrics.avgSLA.toFixed(2)}%
+              </span>
             </div>
-            <div className="flex-1 overflow-auto p-4">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800 sticky top-0 z-10">
-                    <th className="p-3">Site ID</th>
-                    <th className="p-3">Site Name</th>
-                    <th className="p-3">Provinsi</th>
-                    <th className="p-3">Kabupaten</th>
-                    <th className="p-3">Koneksi</th>
-                    <th className="p-3">Provider</th>
-                    {/* DUA HEADER BARU DI BAWAH INI */}
-                    <th className="p-3">Struktur</th>
-                    <th className="p-3">Bandwidth</th>
-                    <th className="p-3">SLA (AV)</th>
-                    <th className="p-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-850">
-                  {modalTableData.length > 0 ? modalTableData.map((feature, idx) => {
-                    const p = feature.properties;
-                    return (
-                      <tr key={idx} className="hover:bg-slate-850/50 transition font-sans">
-                        <td className="p-3 font-mono font-medium text-sky-400">{p.kodesite || '-'}</td>
-                        <td className="p-3 font-semibold text-slate-200">{p["NAMA SITE"] || p.text_site || '-'}</td>
-                        <td className="p-3 text-slate-300">{p.nama_prop || p.PROVINSI || p.provinsi || '-'}</td>
-                        <td className="p-3 text-slate-300">{p.nama_kab || p.KABUPATEN || p.kabupaten || p["KABUPATEN/KOTA"] || '-'}</td>
-                        <td className="p-3 text-slate-400">{normalizeTipeKoneksi(p.type_koneksi)}</td>
-                        <td className="p-3 text-slate-300">{p.Provider || '-'}</td>
-                        {/* DUA DATA BARU DI BAWAH INI */}
-                        <td className="p-3 text-slate-300">{p.STRUKTUR || '-'}</td>
-                        <td className="p-3 text-slate-300">{p.bandwidth || '-'}</td>
-                        <td className="p-3 font-mono text-amber-400">{(parseSLA(p.AV) * 100).toFixed(2)}%</td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${p.status_link === 'AKTIF' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-                            {p.status_link || 'UNKNOWN'}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  }) : (
-                    <tr>
-                      {/* colSpan diubah dari 8 menjadi 10 agar tabel tidak bolong */}
-                      <td colSpan="10" className="p-8 text-center text-slate-500 italic">No matching records available.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+
+            <div className="bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-700 shadow-xl flex items-center justify-center gap-3 self-start mt-0.5">
+              <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Peta Cluster</span>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-[8px] font-bold tracking-widest ${!isClustered ? 'text-slate-300' : 'text-slate-600'}`}>OFF</span>
+                <button 
+                  onClick={() => setIsClustered(!isClustered)}
+                  className={`w-8 h-4 rounded-full relative transition-colors duration-300 focus:outline-none shadow-inner ${isClustered ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                >
+                  <div className={`absolute top-[2px] left-[2px] bg-white w-3 h-3 rounded-full shadow transition-transform duration-300 ${isClustered ? 'transform translate-x-4' : ''}`} />
+                </button>
+                <span className={`text-[8px] font-bold tracking-widest ${isClustered ? 'text-emerald-400' : 'text-slate-600'}`}>ON</span>
+              </div>
             </div>
           </div>
-        </div>
+
+          {/* SISI KANAN ATAS: BASEMAP, NAVIGASI, & ZOOM GAUGE */}
+          <div className="absolute top-4 right-4 z-10 pointer-events-none flex flex-col items-end gap-3 animate-in slide-in-from-right duration-500">
+            
+            {/* Kontainer Baris Atas: Basemap & Tombol Dashboard */}
+            <div className="flex items-center gap-2 pointer-events-auto">
+              
+              <div className="bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 shadow-xl flex gap-1">
+                <button onClick={() => setCurrentBasemap('dark')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'dark' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Dark</button>
+                <button onClick={() => setCurrentBasemap('osm')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'osm' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Light</button>
+              </div>
+
+              <button 
+                onClick={() => setShowMap(false)} 
+                className="bg-orange-600/30 border border-orange-500/50 hover:bg-orange-500 hover:text-slate-950 text-white-400 p-1.5 px-4 rounded-xl text-xs font-bold tracking-wider transition-all shadow-xl h-full flex items-center gap-2"
+                title="Kembali ke Dashboard Eksekutif"
+              >
+                <span className="text-sm">🏠</span> DASHBOARD
+              </button>
+            </div>
+
+            {/* ZOOM GAUGE DIPINDAH KE BAWAH (Rata Kanan) */}
+            <div className="pointer-events-auto">
+              <ZoomGauge 
+                zoom={currentZoom} 
+                selProv={selProv}
+                selKab={selKab}
+                selKec={selKec}
+                selKel={selKel}
+              />
+            </div>
+            
+          </div>
+
+          {/* TENGAH ATAS: JARKOMDAT MONITORING SYSTEM & PANEL FILTER */}
+          <div className="absolute top-0 left-0 w-full z-20 flex flex-col items-center pointer-events-none">
+            <button 
+              onClick={() => setIsFilterOpen(!isFilterOpen)} 
+              className={`relative z-30 bg-slate-900/95 backdrop-blur-md px-5 py-2.5 border-x border-b border-emerald-500/40 shadow-[0_4px_20px_rgba(16,185,129,0.15)] pointer-events-auto flex items-center gap-4 transition-all hover:bg-slate-800 cursor-pointer group ${isFilterOpen ? 'rounded-b-none' : 'rounded-b-2xl'}`}
+            >
+              <img src="./kemendagri.svg" alt="Logo Kemendagri" className="h-10 w-10 object-contain flex-shrink-0 drop-shadow-md" />
+              <h1 className="text-sm font-bold tracking-widest text-emerald-400 uppercase drop-shadow-md text-center select-none">JARKOMDAT MONITORING SYSTEM</h1>
+              <div className="bg-slate-800/80 w-6 h-6 flex items-center justify-center rounded text-xs text-slate-400 group-hover:text-emerald-400 transition font-mono flex-shrink-0">
+                {isFilterOpen ? '✕' : '▼'}
+              </div>
+            </button>
+
+            <div className={`relative z-20 pointer-events-auto transition-all duration-300 ease-out transform origin-top overflow-visible ${isFilterOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full absolute pointer-events-none'}`}>
+              <div className="bg-slate-900/95 backdrop-blur-md p-3 px-6 rounded-b-xl border-x border-b border-emerald-500/40 shadow-2xl flex flex-wrap justify-center items-center gap-3 text-xs -mt-[1px]">
+                <input type="text" placeholder="Search ID/Name..." className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 w-44 text-slate-200 focus:outline-none focus:border-emerald-500 transition shadow-inner text-xs font-semibold" value={searchId} onChange={(e) => setSearchId(e.target.value)} />
+                
+                {/* FILTER TIPE KONEKSI */}
+                <div className="relative">
+                  <button type="button" onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)} className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-300 shadow-inner flex justify-between items-center w-48 text-left cursor-pointer hover:border-slate-600 transition text-xs font-semibold">
+                    <span className="truncate pr-2">{selectedTypes.length === 0 ? 'Tipe Koneksi (All)' : `Tipe Koneksi (${selectedTypes.length} Terpilih)`}</span>
+                    <span className="text-[9px] text-slate-500 font-mono flex-shrink-0">{isTypeDropdownOpen ? '▲' : '▼'}</span>
+                  </button>
+                  {isTypeDropdownOpen && (
+                    <div className="absolute left-0 mt-1 w-52 bg-slate-900 border border-slate-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-2 z-50 max-h-60 overflow-y-auto border-t-2 border-t-emerald-500 custom-scrollbar">
+                      {uniqueTypes.map(t => {
+                        const isChecked = selectedTypes.includes(t);
+                        return (
+                          <label key={t} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-850 rounded cursor-pointer select-none text-slate-300 transition-colors">
+                            <input type="checkbox" checked={isChecked} onChange={() => setSelectedTypes(isChecked ? selectedTypes.filter(item => item !== t) : [...selectedTypes, t])} className="accent-emerald-500 h-3.5 w-3.5 rounded border-slate-700 bg-slate-950 cursor-pointer" />
+                            <span className="text-xs font-semibold truncate" title={t}>{t}</span>
+                          </label>
+                        );
+                      })}
+                      {selectedTypes.length > 0 && (
+                        <button type="button" onClick={() => setSelectedTypes([])} className="w-full text-center text-[10px] text-red-400 hover:text-red-300 font-bold border-t border-slate-800 pt-2 mt-1.5 cursor-pointer">✕ Bersihkan Pilihan</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* FILTER PROVIDER */}
+                <div className="relative">
+                  <button type="button" onClick={() => setIsProviderDropdownOpen(!isProviderDropdownOpen)} className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-300 shadow-inner flex justify-between items-center w-48 text-left cursor-pointer hover:border-slate-600 transition text-xs font-semibold">
+                    <span className="truncate pr-2">{selectedProviders.length === 0 ? 'Provider (All)' : `Provider (${selectedProviders.length} Terpilih)`}</span>
+                    <span className="text-[9px] text-slate-500 font-mono flex-shrink-0">{isProviderDropdownOpen ? '▲' : '▼'}</span>
+                  </button>
+                  {isProviderDropdownOpen && (
+                    <div className="absolute left-0 mt-1 w-52 bg-slate-900 border border-slate-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-2 z-50 max-h-60 overflow-y-auto border-t-2 border-t-emerald-500 custom-scrollbar">
+                      {uniqueProviders.map(p => {
+                        const isChecked = selectedProviders.includes(p);
+                        return (
+                          <label key={p} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-850 rounded cursor-pointer select-none text-slate-300 transition-colors">
+                            <input type="checkbox" checked={isChecked} onChange={() => setSelectedProviders(isChecked ? selectedProviders.filter(item => item !== p) : [...selectedProviders, p])} className="accent-emerald-500 h-3.5 w-3.5 rounded border-slate-700 bg-slate-950 cursor-pointer" />
+                            <span className="text-xs font-semibold truncate" title={p}>{p}</span>
+                          </label>
+                        );
+                      })}
+                      {selectedProviders.length > 0 && (
+                        <button type="button" onClick={() => setSelectedProviders([])} className="w-full text-center text-[10px] text-red-400 hover:text-red-300 font-bold border-t border-slate-800 pt-2 mt-1.5 cursor-pointer">✕ Bersihkan Pilihan</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* FILTER STRUKTUR */}
+                <div className="relative">
+                  <button type="button" onClick={() => setIsStructureDropdownOpen(!isStructureDropdownOpen)} className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-300 shadow-inner flex justify-between items-center w-48 text-left cursor-pointer hover:border-slate-600 transition text-xs font-semibold">
+                    <span className="truncate pr-2">{selectedStructures.length === 0 ? 'Struktur (All)' : `Struktur (${selectedStructures.length} Terpilih)`}</span>
+                    <span className="text-[9px] text-slate-500 font-mono flex-shrink-0">{isStructureDropdownOpen ? '▲' : '▼'}</span>
+                  </button>
+                  {isStructureDropdownOpen && (
+                    <div className="absolute left-0 mt-1 w-52 bg-slate-900 border border-slate-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-2 z-50 max-h-60 overflow-y-auto border-t-2 border-t-emerald-500 custom-scrollbar">
+                      {[
+                         ...strukturOrder.filter(s => uniqueStructures.includes(s)).map(s => ({ value: s, label: strukturDisplay[s] })),
+                         ...uniqueStructures.filter(s => !strukturOrder.includes(s) && s !== 'N/A' && s !== '').map(s => ({ value: s, label: s }))
+                      ].map(opt => {
+                        const isChecked = selectedStructures.includes(opt.value);
+                        return (
+                          <label key={opt.value} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-850 rounded cursor-pointer select-none text-slate-300 transition-colors">
+                            <input type="checkbox" checked={isChecked} onChange={() => setSelectedStructures(isChecked ? selectedStructures.filter(item => item !== opt.value) : [...selectedStructures, opt.value])} className="accent-emerald-500 h-3.5 w-3.5 rounded border-slate-700 bg-slate-950 cursor-pointer" />
+                            <span className="text-xs font-semibold truncate" title={opt.label}>{opt.label}</span>
+                          </label>
+                        );
+                      })}
+                      {selectedStructures.length > 0 && (
+                        <button type="button" onClick={() => setSelectedStructures([])} className="w-full text-center text-[10px] text-red-400 hover:text-red-300 font-bold border-t border-slate-800 pt-2 mt-1.5 cursor-pointer">✕ Bersihkan Pilihan</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* LACI INFORMASI DETAIL */}
+          <div className={`absolute top-[40%] -translate-y-1/2 left-0 z-30 flex items-center transition-transform duration-300 ease-in-out ${isDetailOpen ? 'translate-x-0' : '-translate-x-[22rem]'}`}>
+            <div className="w-[22rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-br-2xl border-y border-r border-emerald-500/40 shadow-[20px_0_30px_rgba(0,0,0,0.5)] h-fit max-h-[60vh] overflow-y-auto pointer-events-auto flex flex-col custom-scrollbar">
+              <h2 className="text-base font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-3 flex items-center gap-2 flex-shrink-0"><span className="text-base">📋</span> Panel Informasi Detail</h2>
+              <div className="flex-1 overflow-y-auto pr-1">
+                {clickedSite ? (
+                  <div className="space-y-2.5 text-sm pb-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="text-[11px] uppercase text-slate-500 block font-semibold">Site Name</label><p className="text-base font-bold text-emerald-400 leading-tight truncate" title={clickedSite["NAMA SITE"] || clickedSite.text_site}>{clickedSite["NAMA SITE"] || clickedSite.text_site || '-'}</p></div>
+                      <div><label className="text-[11px] uppercase text-slate-500 block font-semibold">Site ID</label><p className="font-mono font-bold text-slate-200 text-base truncate">{clickedSite.kodesite || '-'}</p></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 border-y border-slate-800/60 py-2.5 my-2 bg-slate-950/40 p-2 rounded">
+                      <div><label className="text-[11px] uppercase text-slate-500 block">Availability</label><p className={`font-mono font-bold text-xl ${getAVColorClass(clickedSite.AV)}`}>{(parseSLA(clickedSite.AV) * 100).toFixed(2)}%</p></div>
+                      <div><label className="text-[11px] uppercase text-slate-500 block">Struktur</label><p className="font-semibold text-slate-300 truncate">{renderField('struct', clickedSite.STRUKTUR)}</p></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="text-[11px] uppercase text-slate-500 block">Provinsi</label><p className="text-slate-300 font-semibold truncate" title={renderField('prov', clickedSite.nama_prop || clickedSite.PROVINSI || clickedSite.provinsi)}>{renderField('prov', clickedSite.nama_prop || clickedSite.PROVINSI || clickedSite.provinsi)}</p></div>
+                      <div><label className="text-[11px] uppercase text-slate-500 block">Kecamatan</label><p className="text-slate-300 font-semibold truncate" title={renderField('kec', clickedSite.nama_kec || clickedSite.KECAMATAN || clickedSite.kecamatan)}>{renderField('kec', clickedSite.nama_kec || clickedSite.KECAMATAN || clickedSite.kecamatan)}</p></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="text-[11px] uppercase text-slate-500 block">Kabupaten / Kota</label><p className="text-slate-300 font-semibold truncate" title={renderField('kab', clickedSite.nama_kab || clickedSite.KABUPATEN || clickedSite.kabupaten || clickedSite["KABUPATEN/KOTA"])}>{renderField('kab', clickedSite.nama_kab || clickedSite.KABUPATEN || clickedSite.kabupaten || clickedSite["KABUPATEN/KOTA"])}</p></div>
+                      <div><label className="text-[11px] uppercase text-slate-500 block">Kelurahan / Desa</label><p className="text-slate-300 font-semibold truncate" title={renderField('kel', clickedSite.nama_kel || clickedSite.KELURAHAN || clickedSite.kelurahan || clickedSite.DESA)}>{renderField('kel', clickedSite.nama_kel || clickedSite.KELURAHAN || clickedSite.kelurahan || clickedSite.DESA)}</p></div>
+                    </div>
+                    {clickedSite.Provider_1 && clickedSite.Provider_1 !== '-' && clickedSite.Provider_1 !== 'nan' && (
+                      <div className="pt-2.5 mt-1 border-t border-slate-800/80">
+                        <div className={`text-[14px] font-bold mb-1 flex items-center gap-1.5 ${getProviderColor(clickedSite.Provider_1).text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${getProviderColor(clickedSite.Provider_1).bg}`}></span>{clickedSite.Provider_1.toUpperCase()}
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 text-[11px] pl-2 border-l border-slate-800">
+                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_1 || '-'}</p></div>
+                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_1 || '-'}</p></div>
+                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_1 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_1 || '-'}</p></div>
+                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_1)}`}>{clickedSite.AV_1 || '-'}</p></div>
+                        </div>
+                      </div>
+                    )}
+                    {clickedSite.Provider_2 && clickedSite.Provider_2 !== '-' && clickedSite.Provider_2 !== 'nan' && (
+                      <div className="pt-2.5 mt-1 border-t border-slate-800/80">
+                        <div className={`text-[14px] font-bold mb-1 flex items-center gap-1.5 ${getProviderColor(clickedSite.Provider_2).text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${getProviderColor(clickedSite.Provider_2).bg}`}></span>{clickedSite.Provider_2.toUpperCase()}
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 text-[11px] pl-2 border-l border-slate-800">
+                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_2 || '-'}</p></div>
+                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_2 || '-'}</p></div>
+                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_2 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_2 || '-'}</p></div>
+                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_2)}`}>{clickedSite.AV_2 || '-'}</p></div>
+                        </div>
+                      </div>
+                    )}
+                    {clickedSite.AV_Rata_Rata && clickedSite.AV_Rata_Rata !== '-' && clickedSite.AV_Rata_Rata !== 'nan' && clickedSite.Provider_2 !== '-' && (
+                      <div className="pt-2 mt-1 border-t border-slate-800/80">
+                        <div className="flex justify-between items-center bg-slate-950/60 p-2 rounded-lg border border-slate-800/80 shadow-inner">
+                          <span className="text-[14px] uppercase text-slate-400 font-bold tracking-wider">AVG. AV</span>
+                          <span className={`font-mono font-bold text-lg drop-shadow-md ${getAVColorClass(clickedSite.AV_Rata_Rata)}`}>{clickedSite.AV_Rata_Rata}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : clickedRegion ? (
+                  <div className="space-y-3 text-xs">
+                    <div className="bg-sky-500/10 border border-sky-500/20 p-2.5 rounded-lg mb-1"><p className="text-sky-400 italic">Data Wilayah Administrasi</p></div>
+                    <div><label className="text-[10px] uppercase text-slate-500 block">Provinsi</label><p className="text-sm font-bold text-slate-200">{clickedRegion.nama_prop || '-'}</p></div>
+                    <div><label className="text-[10px] uppercase text-slate-500 block">Kabupaten / Kota</label><p className="text-xs font-semibold text-slate-300">{clickedRegion.nama_kab || '-'}</p></div>
+                    <div><label className="text-[10px] uppercase text-slate-500 block">Kecamatan</label><p className="text-xs font-semibold text-slate-300">{clickedRegion.nama_kec || '-'}</p></div>
+                    <div><label className="text-[10px] uppercase text-slate-500 block">Kelurahan / Desa</label><p className="text-xs font-semibold text-slate-300">{clickedRegion.nama_kel || '-'}</p></div>
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-800 rounded-lg text-slate-500 my-auto"><span className="text-xl mb-1">👆</span><p className="text-[11px]">Klik titik site atau wilayah pada peta.</p></div>
+                )}
+              </div>
+            </div>
+            <button onClick={() => setIsDetailOpen(!isDetailOpen)} className="bg-slate-900/95 border-y border-r border-emerald-500/40 py-5 px-1.5 rounded-r-xl pointer-events-auto hover:bg-slate-800 transition shadow-[5px_0_15px_rgba(16,185,129,0.15)] flex flex-col items-center justify-center gap-3 cursor-pointer group">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mb-1" />
+              <span className="text-slate-300 group-hover:text-emerald-400 font-bold tracking-[0.2em] uppercase text-[10px] transition-colors" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>Informasi Detail</span>
+              <span className="text-slate-500 text-[10px] font-mono mt-1">{isDetailOpen ? '◀' : '▶'}</span>
+            </button>
+          </div>
+
+          {/* LACI FILTER HIERARKI MENGGUNAKAN CUSTOM SELECT */}
+          <div className={`absolute top-[47.5%] -translate-y-1/2 right-0 z-30 flex flex-row-reverse items-center transition-transform duration-300 ease-in-out ${isHierarchyOpen ? 'translate-x-0' : 'translate-x-[20rem]'}`}>
+            <div className="w-[20rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-bl-2xl border-y border-l border-emerald-500/40 shadow-[-20px_0_30px_rgba(0,0,0,0.5)] h-fit max-h-[55vh] pointer-events-auto flex flex-col">
+              <h2 className="text-base font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-4 flex items-center gap-2"><span className="text-base">🎛️</span> Filter Hierarki</h2>
+              <div className="space-y-3 flex-1 overflow-visible pr-1 pb-1">
+                <div className="space-y-1.5"><label className="text-[12px] text-slate-500 uppercase font-medium block">Provinsi</label><CustomSelect value={selProv} onChange={(val) => handleHierarchyChange('prov', val)} options={listProvinsi} placeholder="-- Select Provinsi --" /></div>
+                <div className="space-y-1.5 mt-2"><label className="text-[12px] text-slate-500 uppercase font-medium block">Kabupaten / Kota</label><CustomSelect value={selKab} onChange={(val) => handleHierarchyChange('kab', val)} options={listKabupaten} placeholder="-- Select Kabupaten --" disabled={!selProv} /></div>
+                <div className="space-y-1.5 mt-2"><label className="text-[12px] text-slate-500 uppercase font-medium block">Kecamatan</label><CustomSelect value={selKec} onChange={(val) => handleHierarchyChange('kec', val)} options={listKecamatan} placeholder="-- Select Kecamatan --" disabled={!selKab} /></div>
+                <div className="space-y-1.5 mt-2 mb-2"><label className="text-[12px] text-slate-500 uppercase font-medium block">Kelurahan / Desa</label><CustomSelect value={selKel} onChange={(val) => handleHierarchyChange('kel', val)} options={listKelurahan} placeholder="-- Select Kelurahan --" disabled={!selKec} /></div>
+                <div className="mt-4 pt-4 border-t border-slate-800 pb-1"><p className="text-[10px] text-slate-500 italic text-center leading-relaxed">Pilih opsi di atas untuk auto-zoom ke poligon wilayah.</p></div>
+              </div>
+            </div>
+            <button onClick={() => setIsHierarchyOpen(!isHierarchyOpen)} className="bg-slate-900/95 border-y border-l border-emerald-500/40 py-5 px-1.5 rounded-l-xl pointer-events-auto hover:bg-slate-800 transition shadow-[-5px_0_15px_rgba(16,185,129,0.15)] flex flex-col items-center justify-center gap-3 cursor-pointer group">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mb-1" />
+              <span className="text-slate-300 group-hover:text-emerald-400 font-bold tracking-[0.2em] uppercase text-[10px] transition-colors" style={{ writingMode: 'vertical-rl' }}>Filter Hierarki</span>
+              <span className="text-slate-500 text-[12px] font-mono mt-1">{isHierarchyOpen ? '▶' : '◀'}</span>
+            </button>
+          </div>
+
+          {/* ==========================================================
+              5 KARTU BAWAH (DIPENDEKKAN & POPUP RATA ATAS)
+              ========================================================== */}
+          <div className="absolute bottom-10 left-4 right-4 z-10 pointer-events-none">
+            <div className="flex flex-row gap-3 xl:gap-4 pointer-events-auto h-[160px] xl:h-[180px] w-full items-stretch">
+              
+              {/* SISI KIRI (1/3 LAYAR) */}
+              <div className="w-1/3 flex flex-col gap-2.5 h-full">
+                <div className="flex gap-2.5 flex-1 min-h-0">
+                  <div onClick={() => setSelectedModal('total')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-blue-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
+                    <div className="text-[11px] xl:text-[12px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-blue-400 transition leading-tight">1. Total Site</div>
+                    <div className="flex flex-col mt-auto">
+                      <span className="text-2xl xl:text-3xl font-bold font-mono text-white leading-none mb-1">{metrics.total}</span>
+                      <span className="text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
+                    </div>
+                  </div>
+                  <div onClick={() => setSelectedModal('online')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-emerald-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
+                    <div className="text-[11px] xl:text-[12px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-emerald-400 transition leading-tight">2. Online Site</div>
+                    <div className="flex flex-col mt-auto">
+                      <div className="flex items-baseline gap-1.5 mb-1">
+                        <span className="text-2xl xl:text-3xl font-bold font-mono text-emerald-400 leading-none">{metrics.online}</span>
+                        <span className="text-[13px] xl:text-[14px] font-mono text-emerald-500/80 font-bold">({metrics.onlinePct}%)</span>
+                      </div>
+                      <span className="text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
+                    </div>
+                  </div>
+                  <div onClick={() => setSelectedModal('offline')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-red-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
+                    <div className="text-[11px] xl:text-[12px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-red-400 transition leading-tight">3. Offline Site</div>
+                    <div className="flex flex-col mt-auto">
+                      <div className="flex items-baseline gap-1.5 mb-1">
+                        <span className="text-2xl xl:text-3xl font-bold font-mono text-red-400 leading-none">{metrics.offline}</span>
+                        <span className="text-[13px] xl:text-[14px] font-mono text-red-500/80 font-bold">({metrics.offlinePct}%)</span>
+                      </div>
+                      <span className="text-[9px] text-slate-500 group-hover:text-slate-300 font-medium">Tabel Lengkap ↗</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-[65px] bg-slate-900/80 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-800 shadow-xl flex flex-col justify-between relative group">
+                  <div className="flex justify-between items-center mb-1">
+                    <div className="text-[12px] xl:text-[13px] uppercase font-bold tracking-wider text-slate-400 leading-tight">5. Filter Waktu</div>
+                    <CustomSelect value={selectedYear} onChange={setSelectedYear} options={uniqueYears} placeholder="Year" className="w-20" menuUp={true} />
+                  </div>
+                  <div className="flex flex-col w-full mt-auto">
+                    <div className="relative h-1 bg-slate-800 rounded-lg w-full flex items-center">
+                      <div className="absolute h-full bg-emerald-500 rounded-lg pointer-events-none transition-all duration-100" style={{ width: `${((selectedMonth - 1) / 11) * 100}%` }} />
+                      <input type="range" min="1" max="12" value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))} disabled={uniqueYears.length === 0} className="absolute w-full h-full appearance-none bg-transparent cursor-pointer z-20 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-400 [&::-webkit-slider-thumb]:appearance-none" />
+                    </div>
+                    <div className="flex justify-between text-[7px] text-slate-500 mt-1.5 font-mono px-1">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
+                        <span key={m} className={m === selectedMonth ? 'text-emerald-400 font-bold scale-125 transition-transform' : 'transition-transform'}>
+                          {String(m).padStart(2, '0')}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SISI KANAN: CARD 4 DATA SUMMARY */}
+              <div className={`transition-all duration-500 ease-in-out ${selectedPieData ? 'w-1/2' : 'w-2/3'} h-full bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col relative`}>
+                <div className="text-[14px] xl:text-[16px] uppercase font-bold tracking-wider text-slate-400 mb-1">4. Data Summary</div>
+                <div className="flex justify-center gap-2 xl:gap-4 items-start flex-1 w-full overflow-visible mt-1">
+                  <DonutStat title="Kategori Koneksi" data={summaryData.tipe} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Kategori Koneksi'} />
+                  <DonutStat title="Provider Utama" data={summaryData.provider} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Provider Utama'} />
+                  <DonutStat title="Struktur" data={summaryData.struktur} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Struktur'} />
+                  <DonutStat title="Kapasitas Bandwidth" data={summaryData.bandwidth} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Kapasitas Bandwidth'} />
+                </div>
+              </div>
+
+              {/* POPUP CARD 4 (RATA ATAS & H-FIT & TANPA GAP) */}
+              {selectedPieData && (
+                <div className="w-1/6 h-fit max-h-full overflow-y-auto bg-slate-900/95 backdrop-blur-lg p-3 xl:p-4 rounded-xl border border-blue-500/30 shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 self-start custom-scrollbar">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-[11px] xl:text-[12px] font-bold text-blue-400 uppercase leading-tight pr-2">{selectedPieData.title}</h3>
+                    <button onClick={() => setSelectedPieData(null)} className="bg-red-500 hover:bg-red-600 text-white w-5 h-5 rounded flex items-center justify-center transition-all shadow-[0_0_10px_rgba(239,68,68,0.4)] flex-shrink-0" title="Tutup Panel"><span className="text-[10px]">✕</span></button>
+                  </div>
+                  <div className="flex flex-col gap-0">
+                    {selectedPieData.data.length > 0 ? (
+                      selectedPieData.data.map((d, i) => {
+                        const colors = ['#10b981', '#0ea5e9', '#f59e0b', '#8b5cf6', '#ef4444', '#a855f7'];
+                        const color = colors[i % colors.length];
+                        return (
+                          <div key={d.name} className="flex justify-between items-center border-b border-slate-800/30 py-[0px] gap-1 hover:bg-slate-800/30 transition-colors">
+                            <div className="flex items-center gap-1 min-w-0">
+                              <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                              <span className="text-[11px] xl:text-[12px] font-bold truncate" style={{ color }} title={d.name}>{d.name}</span>
+                            </div>
+                            <span className="text-[12px] font-mono font-bold flex-shrink-0 text-slate-200">
+                              {d.count} <span style={{ color }} className="font-medium text-[12px] opacity-80">({d.pct}%)</span>
+                            </span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center py-2"><span className="text-[9px] font-bold text-red-400 uppercase">NO DATA</span></div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* MODAL POPUP (RAW DATA TABLE) */}
+          {selectedModal && (
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+              <div className="bg-slate-900 w-full max-w-6xl h-[80vh] rounded-2xl border border-slate-800 shadow-2xl flex flex-col overflow-hidden">
+                <div className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">Raw Data Table — {selectedModal.toUpperCase()} SITES</h3>
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">Records Found: {modalTableData.length} lines</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={handleExportExcel} className="bg-emerald-600/20 border border-emerald-500/50 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-semibold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-2"><span>⬇</span> Export Excel</button>
+                    <button onClick={() => setSelectedModal(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition font-semibold">✕ Close Table</button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-auto p-4">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800 sticky top-0 z-10">
+                        <th className="p-3">Site ID</th><th className="p-3">Site Name</th><th className="p-3">Provinsi</th><th className="p-3">Kabupaten</th><th className="p-3">Koneksi</th><th className="p-3">Provider</th><th className="p-3">Struktur</th><th className="p-3">Bandwidth</th><th className="p-3">SLA (AV)</th><th className="p-3">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-850">
+                      {modalTableData.length > 0 ? modalTableData.map((feature, idx) => {
+                        const p = feature.properties;
+                        return (
+                          <tr key={idx} className="hover:bg-slate-850/50 transition font-sans">
+                            <td className="p-3 font-mono font-medium text-sky-400">{p.kodesite || '-'}</td>
+                            <td className="p-3 font-semibold text-slate-200">{p["NAMA SITE"] || p.text_site || '-'}</td>
+                            <td className="p-3 text-slate-300">{p.nama_prop || p.PROVINSI || p.provinsi || '-'}</td>
+                            <td className="p-3 text-slate-300">{p.nama_kab || p.KABUPATEN || p.kabupaten || p["KABUPATEN/KOTA"] || '-'}</td>
+                            <td className="p-3 text-slate-400">{normalizeTipeKoneksi(p.type_koneksi)}</td>
+                            <td className="p-3 text-slate-300">{p.Provider || '-'}</td>
+                            <td className="p-3 text-slate-300">{p.STRUKTUR || '-'}</td>
+                            <td className="p-3 text-slate-300">{p.bandwidth || '-'}</td>
+                            <td className="p-3 font-mono text-amber-400">{(parseSLA(p.AV) * 100).toFixed(2)}%</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${p.status_link === 'AKTIF' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>{p.status_link || 'UNKNOWN'}</span>
+                            </td>
+                          </tr>
+                        );
+                      }) : (
+                        <tr><td colSpan="10" className="p-8 text-center text-slate-500 italic">No matching records available.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </>
       )}
     </div>
   );
