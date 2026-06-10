@@ -1640,7 +1640,7 @@ export default function App() {
                 <div className="w-[20%] h-full">
                   <button onClick={() => setShowMap(true)} className="w-full h-full bg-emerald-600 hover:bg-emerald-500 text-white text-xl font-extrabold tracking-widest uppercase rounded-2xl transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:shadow-[0_0_60px_rgba(16,185,129,0.6)] group flex flex-col items-center justify-center gap-4 border border-emerald-400 relative z-20">
                       <span className="text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-md">🗺️</span>
-                      <span className="text-white">Buka Peta Mode</span>
+                      <span className="text-white">Buka Mode Peta</span>
                   </button>
                 </div>
              </div>
