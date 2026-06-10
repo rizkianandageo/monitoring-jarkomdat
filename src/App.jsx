@@ -106,102 +106,58 @@ const CustomSelect = ({ value, onChange, options, placeholder, disabled, classNa
 };
 
 // ==========================================================
-// KOMPONEN: LINE CHART TREND SLA (SKALA TETAP 80-100% & ELASTIS)
+// 4. TREND BULANAN CHART
 // ==========================================================
-const TrendChart = ({ data, displayRange, isGold }) => {
+const TrendChart = ({ data, displayRange, isGold, isDarkMode }) => {
   const [hoverIdx, setHoverIdx] = useState(null);
-
   if (!data || data.length === 0) return null;
-
-  // Ruang Lukis dibuat lebih pipih (panoramic)
-  const width = 400;
-  const height = 40;
-  const paddingX = 40;   
-  const paddingTop = 0;    
-  const paddingBottom = 5; 
-
-  const adjustedMin = 80;
-  const adjustedMax = 100;
-  const adjustedRange = adjustedMax - adjustedMin;
-
+  const width = 400; const height = 40; const paddingX = 40; const paddingTop = 0; const paddingBottom = 5; 
   const getX = (i) => paddingX + (i / (data.length - 1)) * (width - 2 * paddingX);
-  const getY = (val) => {
-    const clampedVal = val < adjustedMin ? adjustedMin : (val > adjustedMax ? adjustedMax : val);
-    return height - paddingBottom - ((clampedVal - adjustedMin) / adjustedRange) * (height - paddingTop - paddingBottom);
-  };
-
+  const getY = (val) => height - paddingBottom - ((Math.max(80, Math.min(val, 100)) - 80) / 20) * (height - paddingTop - paddingBottom);
   const points = data.map((d, i) => `${getX(i)},${getY(d.avg)}`).join(' ');
 
   return (
-    <div className="bg-slate-900/60 backdrop-blur-md p-4 xl:p-5 rounded-2xl border border-slate-700/50 shadow-lg w-full h-full flex flex-col relative group overflow-hidden">
-       
-       {/* HEADER KARTU: Judul di Kiri, AVG & Periode di Kanan */}
-       <div className={`text-[11px] xl:text-[13px] uppercase font-bold tracking-wider ${isGold ? 'text-amber-400' : 'text-slate-400'} mb-1 flex justify-between items-center z-10 flex-shrink-0`}>
+    <div className={`backdrop-blur-md p-4 xl:p-5 rounded-2xl flex flex-col relative group overflow-hidden w-full h-full ${isDarkMode ? 'bg-slate-900/60 border border-slate-700/50 shadow-lg' : 'bg-white/90 border border-slate-200 shadow-xl'}`}>
+       <div className={`text-[11px] xl:text-[13px] uppercase font-bold tracking-wider mb-1 flex justify-between items-center z-10 flex-shrink-0 ${isGold ? (isDarkMode ? 'text-amber-400' : 'text-amber-500') : (isDarkMode ? 'text-slate-400' : 'text-slate-500')}`}>
          <span>📈 TREND BULANAN</span>
          <div className="flex items-center gap-3 xl:gap-4">
-            {/* Nilai AVG AV */}
-            <div className="flex items-center gap-1.5 border-r border-slate-700/80 pr-3 xl:pr-4">
-               <span className="text-[9px] xl:text-[10px] text-slate-500">AVG:</span>
+            <div className={`flex items-center gap-1.5 border-r pr-3 xl:pr-4 ${isDarkMode ? 'border-slate-700/80' : 'border-slate-300'}`}>
+               <span className={`text-[9px] xl:text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>AVG:</span>
                <span className="text-sm xl:text-base text-emerald-400 font-mono font-bold drop-shadow-md">{data[data.length-1].avg.toFixed(2)}%</span>
             </div>
-            {/* Box Periode Aktif */}
-            <div className="bg-slate-800/80 border border-slate-600/50 rounded-md px-2 py-1 flex items-center gap-1.5 shadow-inner">
-               <span className="text-[9px] xl:text-[10px] text-slate-400">PERIODE:</span>
-               <span className="text-[10px] xl:text-[11px] text-slate-200 font-mono font-bold">{displayRange}</span>
+            <div className={`rounded-md px-2 py-1 flex items-center gap-1.5 shadow-inner border ${isDarkMode ? 'bg-slate-800/80 border-slate-600/50' : 'bg-slate-100 border-slate-300'}`}>
+               <span className={`text-[9px] xl:text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>PERIODE:</span>
+               <span className={`text-[10px] xl:text-[11px] font-mono font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>{displayRange}</span>
             </div>
          </div>
        </div>
-
-       {/* Pembungkus SVG */}
        <div className="relative flex-1 w-full mt-2 min-h-0">
          <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 w-full h-full overflow-visible">
-            
-            <line x1={paddingX} y1={paddingTop} x2={paddingX} y2={height - paddingBottom} stroke="#334155" strokeWidth="2" strokeLinecap="round" />
-            <text x={paddingX - 40} y={(paddingTop + (height - paddingBottom)) / 1.75 } fontSize="10" fontWeight="bold" fill="#94a3b8" textAnchor="middle" transform={`rotate(-90, ${paddingX - 40}, ${(paddingTop + (height - paddingBottom)) / 2})`} className="tracking-widest">AV.(%)</text>
-
-            <text x={paddingX - 10} y={getY(100)} fontSize="10" fill="#64748b" textAnchor="end" dominantBaseline="middle" className="font-mono">100%</text>
-            <line x1={paddingX} y1={getY(100)} x2={width - paddingX + 20} y2={getY(100)} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
-
-            <text x={paddingX - 10} y={getY(90)} fontSize="10" fill="#64748b" textAnchor="end" dominantBaseline="middle" className="font-mono">90%</text>
-            <line x1={paddingX} y1={getY(90)} x2={width - paddingX + 20} y2={getY(90)} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" opacity="0.5" />
-
-            <text x={paddingX - 10} y={getY(80)} fontSize="10" fill="#64748b" textAnchor="end" dominantBaseline="middle" className="font-mono">80%</text>
-            <line x1={paddingX} y1={getY(80)} x2={width - paddingX + 20} y2={getY(80)} stroke="#334155" strokeWidth="2" strokeLinecap="round" />
-
-            <text x={width / 2} y={height - -23} fontSize="10" fontWeight="bold" fill="#94a3b8" textAnchor="middle" className="tracking-widest">PERIODE BULAN</text>
-
+            <line x1={paddingX} y1={paddingTop} x2={paddingX} y2={height - paddingBottom} stroke={isDarkMode ? '#334155' : '#cbd5e1'} strokeWidth="2" strokeLinecap="round" />
+            <text x={paddingX - 40} y={(paddingTop + (height - paddingBottom)) / 1.75} fontSize="10" fontWeight="bold" fill={isDarkMode ? '#94a3b8' : '#64748b'} textAnchor="middle" transform={`rotate(-90, ${paddingX - 40}, ${(paddingTop + (height - paddingBottom)) / 2})`} className="tracking-widest">AV.(%)</text>
+            {[100, 90, 80].map(val => (
+              <g key={val}>
+                <text x={paddingX - 10} y={getY(val)} fontSize="10" fill={isDarkMode ? '#64748b' : '#94a3b8'} textAnchor="end" dominantBaseline="middle" className="font-mono">{val}%</text>
+                <line x1={paddingX} y1={getY(val)} x2={width - paddingX + 20} y2={getY(val)} stroke={isDarkMode ? '#334155' : '#cbd5e1'} strokeWidth={val === 80 ? "2" : "1"} strokeDasharray={val === 80 ? "" : "4 4"} opacity={val === 80 ? "1" : "0.5"} />
+              </g>
+            ))}
+            <text x={width / 2} y={height - -22} fontSize="10" fontWeight="bold" fill={isDarkMode ? '#94a3b8' : '#64748b'} textAnchor="middle" className="tracking-widest">PERIODE BULAN</text>
             <polyline points={points} fill="none" stroke="#10b981" strokeWidth="3" strokeLinejoin="round" className="opacity-80 group-hover:opacity-100 transition-opacity drop-shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
-            
-            {data.map((d, i) => {
-               const x = getX(i);
-               const y = getY(d.avg);
-               const isHovered = hoverIdx === i;
-               return (
-                 <g key={i} className="cursor-crosshair" onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
-                   {isHovered && <line x1={x} y1={y} x2={x} y2={getY(80)} stroke="#34d399" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />}
-                   <circle cx={x} cy={y} r={isHovered ? "6" : "4"} fill={isHovered ? "#34d399" : "#0f172a"} stroke="#10b981" strokeWidth={isHovered ? "2.5" : "1.5"} className="transition-all duration-200" />
-                   <circle cx={x} cy={y} r="20" fill="transparent" />
-                   <text x={x} y={getY(80) + 16} fontSize="10" fontWeight="bold" fill={isHovered ? "#34d399" : "#64748b"} textAnchor="middle" className="font-mono transition-colors duration-200 pointer-events-none">
-                     {d.month.split('/')[1]}
-                   </text>
-                 </g>
-               )
-            })}
+            {data.map((d, i) => (
+               <g key={i} className="cursor-crosshair" onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
+                 {hoverIdx === i && <line x1={getX(i)} y1={getY(d.avg)} x2={getX(i)} y2={getY(80)} stroke="#34d399" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />}
+                 <circle cx={getX(i)} cy={getY(d.avg)} r={hoverIdx === i ? "6" : "4"} fill={hoverIdx === i ? "#34d399" : (isDarkMode ? "#0f172a" : "#ffffff")} stroke="#10b981" strokeWidth={hoverIdx === i ? "2.5" : "1.5"} className="transition-all duration-200" />
+                 <circle cx={getX(i)} cy={getY(d.avg)} r="20" fill="transparent" />
+                 <text x={getX(i)} y={getY(80) + 16} fontSize="10" fontWeight="bold" fill={hoverIdx === i ? "#34d399" : (isDarkMode ? "#64748b" : "#94a3b8")} textAnchor="middle" className="font-mono transition-colors duration-200 pointer-events-none">{d.month.split('/')[1]}</text>
+               </g>
+            ))}
          </svg>
-
          {hoverIdx !== null && (
-           <div
-             className="absolute bg-slate-900/95 backdrop-blur-md border border-emerald-500/50 p-2.5 rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.8)] z-50 text-[10px] xl:text-xs pointer-events-none transform -translate-y-full transition-all duration-100"
-             style={{ 
-               left: `calc(${(hoverIdx / (data.length - 1)) * 100}%)`, 
-               top: `calc(${((getY(data[hoverIdx].avg)) / height) * 100}% - 15px)`,
-               transform: `translate(${hoverIdx === data.length - 1 ? '-95%' : hoverIdx === 0 ? '-5%' : '-50%'}, -100%)`
-             }}
-           >
-             <h3 className="text-slate-300 font-bold uppercase tracking-wider border-b border-slate-700 pb-1 mb-1.5 text-center">{data[hoverIdx].month}</h3>
+           <div className={`absolute backdrop-blur-md border border-emerald-500/50 p-2.5 rounded-lg shadow-[0_10px_30px_rgba(0,0,0,0.8)] z-50 text-[10px] xl:text-xs pointer-events-none transform -translate-y-full transition-all duration-100 ${isDarkMode ? 'bg-slate-900/95' : 'bg-white/95'}`} style={{ left: `calc(${(hoverIdx / (data.length - 1)) * 100}%)`, top: `calc(${((getY(data[hoverIdx].avg)) / height) * 100}% - 15px)`, transform: `translate(${hoverIdx === data.length - 1 ? '-95%' : hoverIdx === 0 ? '-5%' : '-50%'}, -100%)`}}>
+             <h3 className={`font-bold uppercase tracking-wider border-b pb-1 mb-1.5 text-center ${isDarkMode ? 'text-slate-300 border-slate-700' : 'text-slate-700 border-slate-200'}`}>{data[hoverIdx].month}</h3>
              <div className="flex justify-between items-center gap-4">
                <span className="font-semibold drop-shadow-md text-emerald-400">AVG</span>
-               <span className="text-slate-100 font-mono font-bold text-sm">{data[hoverIdx].avg.toFixed(2)}%</span>
+               <span className={`font-mono font-bold text-sm ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{data[hoverIdx].avg.toFixed(2)}%</span>
              </div>
            </div>
          )}
@@ -211,62 +167,24 @@ const TrendChart = ({ data, displayRange, isGold }) => {
 };
 
 // ==========================================================
-// KOMPONEN: KONTROL PERIODE (TIME SLIDER DASHBOARD)
+// 5. KONTROL PERIODE SLIDER
 // ==========================================================
-const DashTimeSlider = ({ selectedYear, setSelectedYear, selectedMonth, setSelectedMonth, uniqueYears, isGold }) => {
+const DashTimeSlider = ({ selectedYear, setSelectedYear, selectedMonth, setSelectedMonth, uniqueYears, isGold, isDarkMode }) => {
   return (
-    <div className="bg-slate-900/60 backdrop-blur-md p-4 xl:p-5 rounded-2xl border border-slate-700/50 shadow-lg w-full h-full flex flex-col justify-between relative group overflow-hidden">
-       
-       {/* HEADER KARTU & DROPDOWN TAHUN */}
+    <div className={`backdrop-blur-md p-4 xl:p-5 rounded-2xl w-full h-full flex flex-col justify-between relative group overflow-hidden ${isDarkMode ? 'bg-slate-900/60 border border-slate-700/50 shadow-lg' : 'bg-white/90 border border-slate-200 shadow-xl'}`}>
        <div className="flex justify-between items-center mb-2 z-10 flex-shrink-0">
-         <h3 className={`text-[11px] xl:text-[13px] uppercase font-bold tracking-wider ${isGold ? 'text-amber-400' : 'text-slate-400'} flex items-center gap-2`}>
-           <span>⏱️ FILTER WAKTU</span>
-         </h3>
-         {/* Dropdown Tahun seperti di Peta */}
-         <div className="w-24">
-           <CustomSelect 
-             value={selectedYear} 
-             onChange={setSelectedYear} 
-             options={uniqueYears} 
-             placeholder="Tahun" 
-             disabled={uniqueYears.length === 0}
-             menuUp={false} // Menu ke bawah karena ada di baris atas layar
-           />
-         </div>
+         <h3 className={`text-[11px] xl:text-[13px] uppercase font-bold tracking-wider flex items-center gap-2 ${isGold ? (isDarkMode ? 'text-amber-400' : 'text-amber-500') : (isDarkMode ? 'text-slate-400' : 'text-slate-500')}`}><span>⏱️ FILTER WAKTU</span></h3>
+         <div className="w-24"><CustomSelect value={selectedYear} onChange={setSelectedYear} options={uniqueYears} placeholder="Tahun" disabled={uniqueYears.length === 0} menuUp={false} /></div>
        </div>
-
-       {/* KONTROL SLIDER BULAN (1-12) */}
        <div className="flex-1 flex flex-col justify-center mt-2 pb-1 relative z-0">
           <div className="flex flex-col w-full">
-            <div className="relative h-2 bg-slate-800 rounded-lg w-full flex items-center shadow-inner">
-              
-              {/* Indikator progress bar hijau */}
-              <div 
-                className="absolute h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-lg pointer-events-none transition-all duration-300 ease-out" 
-                style={{ width: `${((selectedMonth - 1) / 11) * 100}%` }} 
-              />
-              
-              {/* Input Range Murni (1 - 12) */}
-              <input 
-                type="range" 
-                min="1" 
-                max="12" 
-                value={selectedMonth} 
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))} 
-                disabled={uniqueYears.length === 0} 
-                className="absolute w-full h-full appearance-none bg-transparent cursor-pointer z-20 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-emerald-500 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(16,185,129,0.8)]" 
-              />
+            <div className={`relative h-2 rounded-lg w-full flex items-center shadow-inner ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`}>
+              <div className="absolute h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-lg pointer-events-none transition-all duration-300 ease-out" style={{ width: `${((selectedMonth - 1) / 11) * 100}%` }} />
+              <input type="range" min="1" max="12" value={selectedMonth} onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))} disabled={uniqueYears.length === 0} className="absolute w-full h-full appearance-none bg-transparent cursor-pointer z-20 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-emerald-500 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
             </div>
-            
-            {/* Label Bulan (01 - 12) */}
             <div className="flex justify-between text-[9px] xl:text-[11px] text-slate-500 mt-3 font-mono px-1">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
-                <span 
-                  key={m} 
-                  className={m === selectedMonth ? 'text-emerald-400 font-extrabold scale-125 transition-transform drop-shadow-[0_0_5px_rgba(52,211,153,0.8)]' : 'transition-transform font-semibold hover:text-slate-300'}
-                >
-                  {String(m).padStart(2, '0')}
-                </span>
+                <span key={m} className={m === selectedMonth ? 'text-emerald-400 font-extrabold scale-125 transition-transform drop-shadow-[0_0_5px_rgba(52,211,153,0.8)]' : `transition-transform font-semibold ${isDarkMode ? 'hover:text-slate-300' : 'hover:text-slate-700'}`}>{String(m).padStart(2, '0')}</span>
               ))}
             </div>
           </div>
@@ -396,46 +314,36 @@ const ZoomGauge = ({ zoom, selProv, selKab, selKec, selKel }) => {
 };
 
 // ==========================================================
-// KOMPONEN: KARTU DASHBOARD EKSKUTIF (UKURAN DIPERBESAR & BISA DIKLIK)
+// 1. KARTU DASHBOARD EKSKUTIF
 // ==========================================================
-const DashCard = ({ title, value, sub, icon, images, color, small, isGold, onClick }) => (
+const DashCard = ({ title, value, sub, icon, images, color, small, isGold, onClick, isDarkMode }) => (
   <div 
     onClick={onClick}
-    className={`w-full h-full bg-slate-900/60 backdrop-blur-md border border-slate-700/50 rounded-2xl p-4 xl:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex flex-col justify-between overflow-hidden group transition-all duration-300 ${onClick ? 'cursor-pointer hover:bg-slate-800/80 hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]' : 'hover:bg-slate-800/60'}`}
+    className={`w-full h-full backdrop-blur-md rounded-2xl p-4 xl:p-5 flex flex-col justify-between overflow-hidden group transition-all duration-300 ${
+      isDarkMode 
+        ? 'bg-slate-900/60 border border-slate-700/50 shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:bg-slate-800/80' 
+        : 'bg-white/90 border border-slate-200 shadow-xl hover:bg-white'
+    } ${onClick ? (isDarkMode ? 'cursor-pointer hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]' : 'cursor-pointer hover:border-emerald-500 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]') : ''}`}
   >
     <div className="flex justify-between items-start mb-1">
-      <h3 className={`${small ? 'text-xs xl:text-sm' : 'text-sm xl:text-base'} font-bold uppercase tracking-wider ${isGold ? 'text-amber-400' : 'text-slate-400'} truncate pr-1 drop-shadow-sm`}>
+      <h3 className={`${small ? 'text-xs xl:text-sm' : 'text-sm xl:text-base'} font-bold uppercase tracking-wider ${isGold ? (isDarkMode ? 'text-amber-400' : 'text-amber-500') : (isDarkMode ? 'text-slate-400' : 'text-slate-500')} truncate pr-1 drop-shadow-sm`}>
         {title}
       </h3>
-      
       <div className="flex gap-1.5 xl:gap-2 items-center flex-shrink-0">
         {images ? (
-          images.map((img, idx) => (
-            <img key={idx} src={img} alt="Logo Provider" className={`${small ? 'h-6 xl:h-7' : 'h-8 xl:h-10'} w-auto object-contain drop-shadow-md transition-transform duration-300 ${onClick ? 'group-hover:scale-110' : ''}`} />
-          ))
+          images.map((img, idx) => <img key={idx} src={img} className={`${small ? 'h-6 xl:h-7' : 'h-8 xl:h-10'} w-auto object-contain drop-shadow-md transition-transform duration-300 ${onClick ? 'group-hover:scale-110' : ''}`} />)
         ) : (
-          <span className={`${small ? 'text-2xl xl:text-3xl' : 'text-3xl xl:text-4xl'} opacity-80 drop-shadow-md transition-transform duration-300 ${onClick ? 'group-hover:scale-110' : ''}`}>
-            {icon}
-          </span>
+          <span className={`${small ? 'text-2xl xl:text-3xl' : 'text-3xl xl:text-4xl'} opacity-80 drop-shadow-md transition-transform duration-300 ${onClick ? 'group-hover:scale-110' : ''}`}>{icon}</span>
         )}
       </div>
     </div>
-
     <div className="flex flex-col mt-auto">
       <div className="flex items-baseline gap-1.5 xl:gap-2">
-        <span className={`${small ? 'text-3xl xl:text-4xl' : 'text-5xl xl:text-6xl'} font-mono font-extrabold ${color} drop-shadow-lg truncate transition-transform duration-300 ${onClick ? 'group-hover:translate-x-1' : ''}`}>
-          {value}
-        </span>
-        {sub && (
-          <span className={`${small ? 'text-xs xl:text-sm' : 'text-base xl:text-xl'} font-mono font-bold text-slate-500`}>
-            {sub}
-          </span>
-        )}
+        <span className={`${small ? 'text-3xl xl:text-4xl' : 'text-5xl xl:text-6xl'} font-mono font-extrabold ${color} drop-shadow-lg truncate transition-transform duration-300 ${onClick ? 'group-hover:translate-x-1' : ''}`}>{value}</span>
+        {sub && <span className={`${small ? 'text-xs xl:text-sm' : 'text-base xl:text-xl'} font-mono font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{sub}</span>}
       </div>
-      
-      {/* Teks Tabel Lengkap (Hanya muncul jika ada prop onClick) */}
       {onClick && (
-        <span className="text-[9px] xl:text-[10px] text-slate-500 group-hover:text-slate-300 font-medium mt-1.5 transition-colors flex items-center gap-1">
+        <span className={`text-[9px] xl:text-[10px] font-medium mt-1.5 transition-colors flex items-center gap-1 ${isDarkMode ? 'text-slate-500 group-hover:text-slate-300' : 'text-slate-400 group-hover:text-slate-700'}`}>
           Tabel Lengkap <span className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform">↗</span>
         </span>
       )}
@@ -444,43 +352,31 @@ const DashCard = ({ title, value, sub, icon, images, color, small, isGold, onCli
 );
 
 // ==========================================================
-// KOMPONEN: DASHBOARD PIE CHART KHUSUS (DIPERBESAR)
+// 2. DASHBOARD PIE CHART
 // ==========================================================
-const DashPieChart = ({ title, items, isGold }) => {
+const DashPieChart = ({ title, items, isGold, isDarkMode }) => {
   const total = items.reduce((sum, item) => sum + item.value, 0);
   let cumulative = 0;
-  
-  const data = items.map(item => {
-    const pct = total > 0 ? ((item.value / total) * 100).toFixed(1) : 0;
-    return { ...item, pct };
-  }).filter(d => parseFloat(d.pct) > 0);
-
+  const data = items.map(item => ({ ...item, pct: total > 0 ? ((item.value / total) * 100).toFixed(1) : 0 })).filter(d => parseFloat(d.pct) > 0);
   const gradient = data.map((d) => {
-    const start = cumulative;
-    cumulative += parseFloat(d.pct);
+    const start = cumulative; cumulative += parseFloat(d.pct);
     return `${d.color} ${start}% ${cumulative}%`;
   }).join(', ');
 
   return (
-    <div className="bg-slate-900/60 backdrop-blur-md border border-slate-700/50 rounded-2xl p-5 xl:p-6 shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex items-center justify-center gap-5 xl:gap-8 hover:bg-slate-800/60 transition-colors h-full w-full">
-       <div 
-         className="relative w-20 h-20 xl:w-28 xl:h-28 flex items-center justify-center rounded-full shadow-[0_0_20px_rgba(0,0,0,0.6)] flex-shrink-0" 
-         style={{ background: `conic-gradient(${gradient || '#1e293b 0% 100%'})` }}
-       >
-          <div className="w-10 h-10 xl:w-14 xl:h-14 bg-slate-900 rounded-full shadow-inner" />
+    <div className={`backdrop-blur-md rounded-2xl p-5 xl:p-6 flex items-center justify-center gap-5 xl:gap-8 h-full w-full transition-colors ${isDarkMode ? 'bg-slate-900/60 border border-slate-700/50 shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:bg-slate-800/80' : 'bg-white/90 border border-slate-200 shadow-xl hover:bg-white'}`}>
+       <div className="relative w-20 h-20 xl:w-28 xl:h-28 flex items-center justify-center rounded-full shadow-[0_0_20px_rgba(0,0,0,0.4)] flex-shrink-0" style={{ background: `conic-gradient(${gradient || '#1e293b 0% 100%'})` }}>
+          <div className={`w-10 h-10 xl:w-14 xl:h-14 rounded-full shadow-inner ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`} />
        </div>
-       
        <div className="flex flex-col gap-2 w-full max-w-[140px] xl:max-w-[180px] justify-center">
-        <h3 className={`text-xs xl:text-sm font-bold uppercase tracking-wider ${isGold ? 'text-amber-400' : 'text-slate-400'} mb-1 border-b border-slate-700/50 pb-1.5`}>
-          {title}
-        </h3>
+        <h3 className={`text-xs xl:text-sm font-bold uppercase tracking-wider ${isGold ? (isDarkMode ? 'text-amber-400' : 'text-amber-500') : (isDarkMode ? 'text-slate-400' : 'text-slate-500')} mb-1 border-b ${isDarkMode ? 'border-slate-700/50' : 'border-slate-200'} pb-1.5`}>{title}</h3>
          {data.map(d => (
            <div key={d.name} className="flex justify-between items-center text-[10px] xl:text-[12px] font-bold">
              <div className="flex items-center gap-2">
                <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: d.color }} />
-               <span className="text-slate-300 truncate max-w-[60px] xl:max-w-[80px]" title={d.name}>{d.name}</span>
+               <span className={`truncate max-w-[60px] xl:max-w-[80px] ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`} title={d.name}>{d.name}</span>
              </div>
-             <span className="text-slate-100 font-mono text-[11px] xl:text-sm">{d.pct}%</span>
+             <span className={`font-mono text-[11px] xl:text-sm ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{d.pct}%</span>
            </div>
          ))}
        </div>
@@ -489,37 +385,22 @@ const DashPieChart = ({ title, items, isGold }) => {
 };
 
 // ==========================================================
-// KOMPONEN: DASHBOARD BAR CHART KHUSUS (ANTI BOCOR)
+// 3. DASHBOARD BAR CHART
 // ==========================================================
-const DashBarChart = ({ title, items, isGold }) => {
+const DashBarChart = ({ title, items, isGold, isDarkMode }) => {
   const maxVal = Math.max(...items.map(d => d.value), 1);
-
   return (
-    <div className="bg-slate-900/60 backdrop-blur-md border border-slate-700/50 rounded-2xl p-4 xl:p-5 shadow-[0_10px_30px_rgba(0,0,0,0.3)] flex flex-col hover:bg-slate-800/60 transition-colors h-full w-full overflow-hidden">
-      <h3 className={`text-[11px] xl:text-[13px] font-bold uppercase tracking-wider ${isGold ? 'text-amber-400' : 'text-slate-400'} mb-2 border-b border-slate-700/50 pb-1.5 flex-shrink-0 text-center`}>
-        {title}
-      </h3>
-       
+    <div className={`backdrop-blur-md rounded-2xl p-4 xl:p-5 flex flex-col h-full w-full overflow-hidden transition-colors ${isDarkMode ? 'bg-slate-900/60 border border-slate-700/50 shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:bg-slate-800/80' : 'bg-white/90 border border-slate-200 shadow-xl hover:bg-white'}`}>
+      <h3 className={`text-[11px] xl:text-[13px] font-bold uppercase tracking-wider text-center ${isGold ? (isDarkMode ? 'text-amber-400' : 'text-amber-500') : (isDarkMode ? 'text-slate-400' : 'text-slate-500')} mb-2 border-b ${isDarkMode ? 'border-slate-700/50' : 'border-slate-200'} pb-1.5 flex-shrink-0`}>{title}</h3>
        <div className="flex-1 flex items-end justify-around gap-2 xl:gap-4 mt-1 pb-1 min-h-0">
          {items.map(d => {
-           const heightPct = (d.value / maxVal) * 100;
            return (
              <div key={d.name} className="flex flex-col items-center justify-end h-full w-full gap-1.5 group min-h-0">
-               <span className="text-[11px] xl:text-xs font-mono font-bold text-slate-300 transition-colors group-hover:text-white flex-shrink-0">
-                 {d.value}
-               </span>
-               
-               {/* PERBAIKAN: Menggunakan flex-1 agar tiang otomatis mengisi sisa ruang secara proporsional */}
-               <div className="w-full max-w-[28px] xl:max-w-[40px] bg-slate-800/80 rounded-t-md relative flex flex-col justify-end flex-1 overflow-hidden shadow-inner border-b border-slate-600">
-                 <div 
-                   className="w-full rounded-t-md transition-all duration-1000 ease-out shadow-[0_-5px_10px_rgba(0,0,0,0.4)] group-hover:opacity-80" 
-                   style={{ height: `${heightPct}%`, backgroundColor: d.color }}
-                 />
+               <span className={`text-[11px] xl:text-xs font-mono font-bold transition-colors flex-shrink-0 ${isDarkMode ? 'text-slate-300 group-hover:text-white' : 'text-slate-600 group-hover:text-slate-900'}`}>{d.value}</span>
+               <div className={`w-full max-w-[28px] xl:max-w-[40px] rounded-t-md relative flex flex-col justify-end flex-1 overflow-hidden shadow-inner border-b ${isDarkMode ? 'bg-slate-800/80 border-slate-600' : 'bg-slate-100 border-slate-300'}`}>
+                 <div className="w-full rounded-t-md transition-all duration-1000 ease-out shadow-[0_-5px_10px_rgba(0,0,0,0.4)] group-hover:opacity-80" style={{ height: `${(d.value / maxVal) * 100}%`, backgroundColor: d.color }} />
                </div>
-               
-               <span className="text-[9px] xl:text-[10px] font-bold text-slate-400 uppercase tracking-wider drop-shadow-md flex-shrink-0">
-                 {d.name}
-               </span>
+               <span className={`text-[9px] xl:text-[10px] font-bold uppercase tracking-wider drop-shadow-md flex-shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{d.name}</span>
              </div>
            )
          })}
@@ -539,6 +420,8 @@ export default function App() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+
+  const [isDarkMode, setIsDarkMode] = useState(false); // Default tampilan terang (Light Mode)
 
   const [rawData, setRawData] = useState([]);
   const [mapReady, setMapReady] = useState(false);
@@ -1667,131 +1550,99 @@ export default function App() {
           LAYAR 1: EXECUTIVE DASHBOARD
           ========================================================== */}
       {!showMap && (
-        <div className="absolute inset-0 z-50 flex flex-col pt-6 pb-6 px-8 overflow-hidden animate-in fade-in duration-500"
+        <div className={`absolute inset-0 z-50 flex flex-col pt-6 pb-6 px-8 overflow-hidden animate-in fade-in duration-500 transition-colors ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}
             style={{
               backgroundImage: "url('./sla-images.jpg')",
               backgroundRepeat: "no-repeat",
               backgroundPosition: "center",
-              backgroundSize: "100%", // Mengatur seberapa besar logo di tengah
-              backgroundColor: "#020617" // Warna dasar tetap slate-950
+              backgroundSize: "100%", 
+              backgroundColor: isDarkMode ? "#020617" : "#f8fafc" // Slate-950 atau Slate-50
             }}>
             
-            {/* Tambahkan overlay agar kartu tetap terlihat jelas di atas logo */}
-            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px] z-0 pointer-events-none" />
-          {/* HEADER DASHBOARD (DIBERI RELATIVE Z-10 AGAR DI ATAS BLUR) */}
-          <div className="relative z-10 flex justify-between items-center mb-6 border-b border-slate-800/80 pb-4 flex-shrink-0">
+          {/* Overlay Blur (Dinamis Gelap/Terang) */}
+          <div className={`absolute inset-0 backdrop-blur-[2px] z-0 pointer-events-none transition-colors ${isDarkMode ? 'bg-slate-950/80' : 'bg-slate-100/85'}`} />
+
+          {/* HEADER DASHBOARD */}
+          <div className={`relative z-10 flex justify-between items-center mb-6 border-b pb-4 flex-shrink-0 ${isDarkMode ? 'border-slate-800/80' : 'border-slate-300'}`}>
             <div className="flex items-center gap-4">
               <img src="./kemendagri.svg" className="h-12 xl:h-14 w-12 xl:w-14 drop-shadow-[0_0_15px_rgba(16,185,129,0.4)]" />
               <div>
-                <h1 className="text-2xl xl:text-3xl font-extrabold tracking-widest text-emerald-400 uppercase drop-shadow-md leading-none">
+                <h1 className="text-2xl xl:text-3xl font-extrabold tracking-widest text-emerald-500 uppercase drop-shadow-md leading-none">
                   JARKOMDAT
                 </h1>
-                <h2 className="text-[11px] xl:text-sm font-medium tracking-[0.3em] text-slate-400 uppercase mt-1">Executive Dashboard</h2>
+                <h2 className={`text-[11px] xl:text-sm font-medium tracking-[0.3em] uppercase mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Executive Dashboard</h2>
               </div>
             </div>
             
-            {/* Tombol Logout Sendirian di Kanan Atas */}
+            {/* Tombol Toggles & Logout */}
             <div className="flex gap-4">
-               <button onClick={handleLogout} className="bg-red-500/20 border border-red-500/50 hover:bg-red-500 hover:text-white text-red-400 px-6 py-2 rounded-lg text-xs font-bold tracking-widest transition shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+               <button 
+                 onClick={() => setIsDarkMode(!isDarkMode)} 
+                 className={`px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition flex items-center gap-2 shadow-md border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-yellow-400 hover:bg-slate-700' : 'bg-white border-slate-200 text-amber-500 hover:bg-slate-50'}`}
+               >
+                 {isDarkMode ? '☀️ LIGHT MODE' : '🌙 DARK MODE'}
+               </button>
+               <button onClick={handleLogout} className="bg-red-500/20 border border-red-500/50 hover:bg-red-500 hover:text-white text-red-500 px-6 py-2 rounded-lg text-xs font-bold tracking-widest transition shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                  LOGOUT
                </button>
             </div>
           </div>
 
-          {/* SISA LAYAR DIBAGI 4 BARIS (DIBERI RELATIVE Z-10 AGAR DI ATAS BLUR) */}
+          {/* SISA LAYAR DIBAGI 4 BARIS SAMA RATA */}
           <div className="relative z-10 flex-1 grid grid-rows-4 gap-4 xl:gap-5 min-h-[600px]">
-             
-             {/* BARIS 1: 35% Kiri (Grafik) & 65% Kanan (3 Card Utama) */}
+              
+             {/* BARIS 1 */}
              <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
                 <div className="w-[35%] h-full">
-                   <DashPieChart 
-                     title="Status Site" 
-                     items={[
-                       { name: 'Online', value: metrics.online, color: '#10b981' },
-                       { name: 'Offline', value: metrics.offline, color: '#ef4444' }
-                     ]} isGold
-                   />
+                   <DashPieChart title="Status Site" items={[{ name: 'Online', value: metrics.online, color: '#10b981' }, { name: 'Offline', value: metrics.offline, color: '#ef4444' }]} isGold isDarkMode={isDarkMode} />
                 </div>
                 <div className="w-[65%] flex flex-row gap-4 xl:gap-5 h-full">
-                  <div className="flex-1 min-w-0"><DashCard title="Total Site" value={metrics.total} icon="🏢" color="text-blue-400" isGold onClick={() => setSelectedModal('total')} /></div>
-                  <div className="flex-1 min-w-0"><DashCard title="Online Site" value={metrics.online} sub={`(${metrics.onlinePct}%)`} icon="✅" color="text-emerald-400" isGold onClick={() => setSelectedModal('online')} /></div>
-                  <div className="flex-1 min-w-0"><DashCard title="Offline Site" value={metrics.offline} sub={`(${metrics.offlinePct}%)`} icon="❌" color="text-red-400" isGold onClick={() => setSelectedModal('offline')} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Total Site" value={metrics.total} icon="🏢" color="text-blue-500" isGold onClick={() => setSelectedModal('total')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Online Site" value={metrics.online} sub={`(${metrics.onlinePct}%)`} icon="✅" color="text-emerald-500" isGold onClick={() => setSelectedModal('online')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Offline Site" value={metrics.offline} sub={`(${metrics.offlinePct}%)`} icon="❌" color="text-red-500" isGold onClick={() => setSelectedModal('offline')} isDarkMode={isDarkMode} /></div>
                 </div>
              </div>
 
-             {/* BARIS 2: 35% Kiri (Grafik) & 65% Kanan (5 Card Provider Eksklusif) */}
+             {/* BARIS 2 */}
              <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
                 <div className="w-[35%] h-full">
-                   <DashPieChart 
-                     title="Provider" 
-                     items={[
-                       { name: 'Telkom Only', value: providerMetrics.telkom, color: '#ef4444' },
-                       { name: 'XL Only', value: providerMetrics.xl, color: '#f59e0b' },
-                       { name: 'Icon Only', value: providerMetrics.icon, color: '#2dd4bf' },
-                       { name: 'Telkom-Icon', value: providerMetrics.telkomIcon, color: '#38bdf8' },
-                       { name: 'Telkom-XL', value: providerMetrics.telkomXl, color: '#c084fc' }
-                     ]} isGold
-                   />
+                   <DashPieChart title="Provider" items={[{ name: 'Telkom Only', value: providerMetrics.telkom, color: '#ef4444' }, { name: 'XL Only', value: providerMetrics.xl, color: '#f59e0b' }, { name: 'Icon Only', value: providerMetrics.icon, color: '#2dd4bf' }, { name: 'Telkom-Icon', value: providerMetrics.telkomIcon, color: '#38bdf8' }, { name: 'Telkom-XL', value: providerMetrics.telkomXl, color: '#c084fc' }]} isGold isDarkMode={isDarkMode} />
                 </div>
                 <div className="w-[65%] flex flex-row gap-3 xl:gap-4 h-full">
-                  <div className="flex-1 min-w-0"><DashCard title="Telkom Only" value={providerMetrics.telkom} images={['./Telkom.png']} color="text-red-500" small onClick={() => setSelectedModal('telkom_only')} /></div>
-                  <div className="flex-1 min-w-0"><DashCard title="XL Only" value={providerMetrics.xl} images={['./XL.png']} color="text-amber-500" small onClick={() => setSelectedModal('xl_only')} /></div>
-                  <div className="flex-1 min-w-0"><DashCard title="Icon Only" value={providerMetrics.icon} images={['./Icon.png']} color="text-teal-400" small onClick={() => setSelectedModal('icon_only')} /></div>
-                  <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Telkom</span><span>& Icon</span></span>} value={providerMetrics.telkomIcon} images={['./Telkom.png', './Icon.png']} color="text-sky-400" small onClick={() => setSelectedModal('telkom_icon')} /></div>
-                  <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Telkom</span><span>& XL</span></span>} value={providerMetrics.telkomXl} images={['./Telkom.png', './XL.png']} color="text-purple-400" small onClick={() => setSelectedModal('telkom_xl')} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Single Link</span><span>Telkom Only</span></span>} value={providerMetrics.telkom} images={['./Telkom.png']} color="text-red-500" small onClick={() => setSelectedModal('telkom_only')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Single Link</span><span>XL Only</span></span>} value={providerMetrics.xl} images={['./XL.png']} color="text-amber-500" small onClick={() => setSelectedModal('xl_only')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Single Link</span><span>Icon Only</span></span>} value={providerMetrics.icon} images={['./Icon.png']} color="text-teal-500" small onClick={() => setSelectedModal('icon_only')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Dual Link</span><span>Telkom</span><span>& Icon</span></span>} value={providerMetrics.telkomIcon} images={['./Telkom.png', './Icon.png']} color="text-sky-500" small onClick={() => setSelectedModal('telkom_icon')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Dual Link</span><span>Telkom</span><span>& XL</span></span>} value={providerMetrics.telkomXl} images={['./Telkom.png', './XL.png']} color="text-purple-500" small onClick={() => setSelectedModal('telkom_xl')} isDarkMode={isDarkMode} /></div>
                 </div>
              </div>
 
-             {/* BARIS 3: 35% Kiri (Grafik) & 65% Kanan (3 Card Total Provider Gabungan) */}
+             {/* BARIS 3 */}
              <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
                 <div className="w-[35%] h-full">
-                   <DashBarChart 
-                     title="Komparasi Total" 
-                     items={[
-                       { name: 'Telkom', value: providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon, color: '#ef4444' },
-                       { name: 'XL', value: providerMetrics.xl + providerMetrics.telkomXl, color: '#f59e0b' },
-                       { name: 'Icon', value: providerMetrics.icon + providerMetrics.telkomIcon, color: '#2dd4bf' }
-                     ]} isGold
-                   />
+                   <DashBarChart title="Komparasi Total" items={[{ name: 'Telkom', value: providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon, color: '#ef4444' }, { name: 'XL', value: providerMetrics.xl + providerMetrics.telkomXl, color: '#f59e0b' }, { name: 'Icon', value: providerMetrics.icon + providerMetrics.telkomIcon, color: '#2dd4bf' }]} isGold isDarkMode={isDarkMode} />
                 </div>
                 <div className="w-[65%] flex flex-row gap-4 xl:gap-5 h-full">
-                  <div className="flex-1 min-w-0"><DashCard title="Total Telkom" value={providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon} images={['./Telkom.png']} color="text-red-500" onClick={() => setSelectedModal('total_telkom')} /></div>
-                  <div className="flex-1 min-w-0"><DashCard title="Total XL" value={providerMetrics.xl + providerMetrics.telkomXl} images={['./XL.png']} color="text-amber-500" onClick={() => setSelectedModal('total_xl')} /></div>
-                  <div className="flex-1 min-w-0"><DashCard title="Total Icon" value={providerMetrics.icon + providerMetrics.telkomIcon} images={['./Icon.png']} color="text-teal-400" onClick={() => setSelectedModal('total_icon')} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Total Telkom" value={providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon} images={['./Telkom.png']} color="text-red-500" onClick={() => setSelectedModal('total_telkom')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Total XL" value={providerMetrics.xl + providerMetrics.telkomXl} images={['./XL.png']} color="text-amber-500" onClick={() => setSelectedModal('total_xl')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Total Icon" value={providerMetrics.icon + providerMetrics.telkomIcon} images={['./Icon.png']} color="text-teal-500" onClick={() => setSelectedModal('total_icon')} isDarkMode={isDarkMode} /></div>
                 </div>
              </div>
 
-             {/* BARIS 4: 40% Slider, 40% Trend Chart, 20% Button Peta */}
+             {/* BARIS 4 */}
              <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
-                
-                {/* 1. SLIDER KONTROL WAKTU (40%) */}
                 <div className="w-[40%] h-full">
-                   <DashTimeSlider 
-                     selectedYear={selectedYear}
-                     setSelectedYear={setSelectedYear}
-                     selectedMonth={selectedMonth}
-                     setSelectedMonth={setSelectedMonth}
-                     uniqueYears={uniqueYears}
-                     isGold 
-                   />
+                   <DashTimeSlider selectedYear={selectedYear} setSelectedYear={setSelectedYear} selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} uniqueYears={uniqueYears} isGold isDarkMode={isDarkMode} />
                 </div>
-
-                {/* 2. TREND BULANAN (40%) */}
                 <div className="w-[40%] h-full">
-                   <TrendChart data={trendData} displayRange={displayRange} isGold />
+                   <TrendChart data={trendData} displayRange={displayRange} isGold isDarkMode={isDarkMode} />
                 </div>
-                
-                {/* 3. TOMBOL BUKA PETA (20%) */}
                 <div className="w-[20%] h-full">
-                  <button 
-                    onClick={() => setShowMap(true)} 
-                    className="w-full h-full bg-emerald-600 hover:bg-emerald-500 text-white text-xl font-extrabold tracking-widest uppercase rounded-2xl transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:shadow-[0_0_60px_rgba(16,185,129,0.6)] group flex flex-col items-center justify-center gap-4 border border-emerald-400 relative z-20"
-                  >
+                  <button onClick={() => setShowMap(true)} className="w-full h-full bg-emerald-600 hover:bg-emerald-500 text-white text-xl font-extrabold tracking-widest uppercase rounded-2xl transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:shadow-[0_0_60px_rgba(16,185,129,0.6)] group flex flex-col items-center justify-center gap-4 border border-emerald-400 relative z-20">
                       <span className="text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-md">🗺️</span>
-                      <span className="text-white">Buka Mode Peta</span>
+                      <span className="text-white">Buka Peta Mode</span>
                   </button>
                 </div>
-
              </div>
 
           </div>
