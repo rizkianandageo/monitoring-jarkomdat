@@ -29,14 +29,23 @@ const getProviderColor = (providerName) => {
   return { text: 'text-sky-400', bg: 'bg-sky-400' }; // Default warna biru
 };
 
-// 4. Fungsi Klasifikasi Warna Nilai Ketersediaan (AV)
+// 4. Fungsi Klasifikasi Warna Nilai Ketersediaan (AV) (Disinkronkan dengan Peta)
 const getAVColorClass = (val) => {
   if (val === null || val === undefined || val === '' || val === '-') return 'text-slate-300';
+  
   const num = parseSLA(val) * 100;
-  if (num > 90) return 'text-emerald-400'; // Hijau (>90%)
-  if (num >= 70) return 'text-amber-500';   // Oranye (70-90%)
-  if (num >= 50) return 'text-yellow-400';  // Kuning (50-70%)
-  return 'text-red-500';                    // Merah (<50%)
+  
+  // Hijau (90% - 100%)
+  if (num >= 90) return 'text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.6)]'; 
+  
+  // Kuning (50% - 89.9%)
+  if (num >= 50) return 'text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.6)]';   
+  
+  // Merah (1% - 49.9%)
+  if (num > 0) return 'text-red-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.6)]';         
+  
+  // Hitam (0%) dengan "Halo" Putih Bercahaya agar sangat terlihat
+  return 'text-black-500 drop-shadow-[0_0_5px_rgba(239,68,68,0.6)'; 
 };
 
 // 5. FUNGSI NORMALISASI TIPE KONEKSI (Lebih Kuat)
@@ -111,7 +120,7 @@ const CustomSelect = ({ value, onChange, options, placeholder, disabled, classNa
 const TrendChart = ({ data, displayRange, isGold, isDarkMode }) => {
   const [hoverIdx, setHoverIdx] = useState(null);
   if (!data || data.length === 0) return null;
-  const width = 400; const height = 40; const paddingX = 40; const paddingTop = 0; const paddingBottom = 5; 
+  const width = 800; const height = 40; const paddingX = 80; const paddingTop = -10; const paddingBottom = 10; 
   const getX = (i) => paddingX + (i / (data.length - 1)) * (width - 2 * paddingX);
   const getY = (val) => height - paddingBottom - ((Math.max(80, Math.min(val, 100)) - 80) / 20) * (height - paddingTop - paddingBottom);
   const points = data.map((d, i) => `${getX(i)},${getY(d.avg)}`).join(' ');
@@ -119,7 +128,7 @@ const TrendChart = ({ data, displayRange, isGold, isDarkMode }) => {
   return (
     <div className={`backdrop-blur-md p-4 xl:p-5 rounded-2xl flex flex-col relative group overflow-hidden w-full h-full ${isDarkMode ? 'bg-slate-900/60 border border-slate-700/50 shadow-lg' : 'bg-white/90 border border-slate-200 shadow-xl'}`}>
        <div className={`text-[11px] xl:text-[13px] uppercase font-bold tracking-wider mb-1 flex justify-between items-center z-10 flex-shrink-0 ${isGold ? (isDarkMode ? 'text-amber-400' : 'text-amber-500') : (isDarkMode ? 'text-slate-400' : 'text-slate-500')}`}>
-         <span>📈 TREND BULANAN</span>
+         <span>📈 TREND BULANAN AVAILABILITY</span>
          <div className="flex items-center gap-3 xl:gap-4">
             <div className={`flex items-center gap-1.5 border-r pr-3 xl:pr-4 ${isDarkMode ? 'border-slate-700/80' : 'border-slate-300'}`}>
                <span className={`text-[9px] xl:text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>AVG:</span>
@@ -134,14 +143,14 @@ const TrendChart = ({ data, displayRange, isGold, isDarkMode }) => {
        <div className="relative flex-1 w-full mt-2 min-h-0">
          <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 w-full h-full overflow-visible">
             <line x1={paddingX} y1={paddingTop} x2={paddingX} y2={height - paddingBottom} stroke={isDarkMode ? '#334155' : '#cbd5e1'} strokeWidth="2" strokeLinecap="round" />
-            <text x={paddingX - 40} y={(paddingTop + (height - paddingBottom)) / 1.75} fontSize="10" fontWeight="bold" fill={isDarkMode ? '#94a3b8' : '#64748b'} textAnchor="middle" transform={`rotate(-90, ${paddingX - 40}, ${(paddingTop + (height - paddingBottom)) / 2})`} className="tracking-widest">AV.(%)</text>
+            <text x={paddingX - 40} y={(paddingTop + (height - paddingBottom)) / 2} fontSize="10" fontWeight="bold" fill={isDarkMode ? '#94a3b8' : '#64748b'} textAnchor="middle" transform={`rotate(-90, ${paddingX - 40}, ${(paddingTop + (height - paddingBottom)) / 2})`} className="tracking-widest">AV.(%)</text>
             {[100, 90, 80].map(val => (
               <g key={val}>
                 <text x={paddingX - 10} y={getY(val)} fontSize="10" fill={isDarkMode ? '#64748b' : '#94a3b8'} textAnchor="end" dominantBaseline="middle" className="font-mono">{val}%</text>
                 <line x1={paddingX} y1={getY(val)} x2={width - paddingX + 20} y2={getY(val)} stroke={isDarkMode ? '#334155' : '#cbd5e1'} strokeWidth={val === 80 ? "2" : "1"} strokeDasharray={val === 80 ? "" : "4 4"} opacity={val === 80 ? "1" : "0.5"} />
               </g>
             ))}
-            <text x={width / 2} y={height - -22} fontSize="10" fontWeight="bold" fill={isDarkMode ? '#94a3b8' : '#64748b'} textAnchor="middle" className="tracking-widest">PERIODE BULAN</text>
+            <text x={width / 2} y={height - -20} fontSize="10" fontWeight="bold" fill={isDarkMode ? '#94a3b8' : '#64748b'} textAnchor="middle" className="tracking-widest">PERIODE BULAN</text>
             <polyline points={points} fill="none" stroke="#10b981" strokeWidth="3" strokeLinejoin="round" className="opacity-80 group-hover:opacity-100 transition-opacity drop-shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
             {data.map((d, i) => (
                <g key={i} className="cursor-crosshair" onMouseEnter={() => setHoverIdx(i)} onMouseLeave={() => setHoverIdx(null)}>
@@ -284,7 +293,7 @@ const ZoomGauge = ({ zoom, selProv, selKab, selKec, selKel }) => {
 
       <div className="flex flex-col items-center mb-1.5 w-full relative z-10">
         <span className="text-[7px] xl:text-[8px] font-bold uppercase tracking-[0.2em] text-slate-400 font-mono mb-0.5">
-          Zoom Level
+          Level Zoom
         </span>
         <span className="text-[9px] xl:text-[10px] font-extrabold uppercase tracking-widest text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.8)] transition-all duration-300">
           {currentLevel}
@@ -314,9 +323,9 @@ const ZoomGauge = ({ zoom, selProv, selKab, selKec, selKel }) => {
 };
 
 // ==========================================================
-// 1. KARTU DASHBOARD EKSKUTIF
+// 1. KARTU DASHBOARD EKSKUTIF (Mendukung Mode Small, Normal & Large)
 // ==========================================================
-const DashCard = ({ title, value, sub, icon, images, color, small, isGold, onClick, isDarkMode }) => (
+const DashCard = ({ title, value, sub, icon, images, color, small, large, isGold, onClick, isDarkMode }) => (
   <div 
     onClick={onClick}
     className={`w-full h-full backdrop-blur-md rounded-2xl p-4 xl:p-5 flex flex-col justify-between overflow-hidden group transition-all duration-300 ${
@@ -326,21 +335,25 @@ const DashCard = ({ title, value, sub, icon, images, color, small, isGold, onCli
     } ${onClick ? (isDarkMode ? 'cursor-pointer hover:border-emerald-500/50 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]' : 'cursor-pointer hover:border-emerald-500 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]') : ''}`}
   >
     <div className="flex justify-between items-start mb-1">
-      <h3 className={`${small ? 'text-xs xl:text-sm' : 'text-sm xl:text-base'} font-bold uppercase tracking-wider ${isGold ? (isDarkMode ? 'text-amber-400' : 'text-amber-500') : (isDarkMode ? 'text-slate-400' : 'text-slate-500')} truncate pr-1 drop-shadow-sm`}>
+      {/* UKURAN JUDUL DIPERBESAR JIKA LARGE */}
+      <h3 className={`${small ? 'text-xs xl:text-sm' : large ? 'text-base xl:text-xl' : 'text-sm xl:text-base'} font-bold uppercase tracking-wider ${isGold ? (isDarkMode ? 'text-amber-400' : 'text-amber-500') : (isDarkMode ? 'text-slate-400' : 'text-slate-500')} truncate pr-1 drop-shadow-sm`}>
         {title}
       </h3>
       <div className="flex gap-1.5 xl:gap-2 items-center flex-shrink-0">
         {images ? (
-          images.map((img, idx) => <img key={idx} src={img} className={`${small ? 'h-6 xl:h-7' : 'h-8 xl:h-10'} w-auto object-contain drop-shadow-md transition-transform duration-300 ${onClick ? 'group-hover:scale-110' : ''}`} />)
+          // UKURAN GAMBAR LOGO DIPERBESAR JIKA LARGE
+          images.map((img, idx) => <img key={idx} src={img} className={`${small ? 'h-6 xl:h-7' : large ? 'h-12 xl:h-16' : 'h-8 xl:h-10'} w-auto object-contain drop-shadow-md transition-transform duration-300 ${onClick ? 'group-hover:scale-110' : ''}`} />)
         ) : (
-          <span className={`${small ? 'text-2xl xl:text-3xl' : 'text-3xl xl:text-4xl'} opacity-80 drop-shadow-md transition-transform duration-300 ${onClick ? 'group-hover:scale-110' : ''}`}>{icon}</span>
+          // UKURAN ICON DIPERBESAR JIKA LARGE
+          <span className={`${small ? 'text-2xl xl:text-3xl' : large ? 'text-5xl xl:text-6xl' : 'text-3xl xl:text-4xl'} opacity-80 drop-shadow-md transition-transform duration-300 ${onClick ? 'group-hover:scale-110' : ''}`}>{icon}</span>
         )}
       </div>
     </div>
     <div className="flex flex-col mt-auto">
       <div className="flex items-baseline gap-1.5 xl:gap-2">
-        <span className={`${small ? 'text-3xl xl:text-4xl' : 'text-5xl xl:text-6xl'} font-mono font-extrabold ${color} drop-shadow-lg truncate transition-transform duration-300 ${onClick ? 'group-hover:translate-x-1' : ''}`}>{value}</span>
-        {sub && <span className={`${small ? 'text-xs xl:text-sm' : 'text-base xl:text-xl'} font-mono font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{sub}</span>}
+        {/* UKURAN ANGKA UTAMA DIPERBESAR JIKA LARGE */}
+        <span className={`${small ? 'text-3xl xl:text-4xl' : large ? 'text-7xl xl:text-[5.5rem]' : 'text-5xl xl:text-6xl'} font-mono font-extrabold ${color} drop-shadow-lg truncate transition-transform duration-300 ${onClick ? 'group-hover:translate-x-1' : ''}`}>{value}</span>
+        {sub && <span className={`${small ? 'text-xs xl:text-sm' : large ? 'text-xl xl:text-2xl' : 'text-base xl:text-xl'} font-mono font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{sub}</span>}
       </div>
       {onClick && (
         <span className={`text-[9px] xl:text-[10px] font-medium mt-1.5 transition-colors flex items-center gap-1 ${isDarkMode ? 'text-slate-500 group-hover:text-slate-300' : 'text-slate-400 group-hover:text-slate-700'}`}>
@@ -352,7 +365,7 @@ const DashCard = ({ title, value, sub, icon, images, color, small, isGold, onCli
 );
 
 // ==========================================================
-// 2. DASHBOARD PIE CHART
+// 2. DASHBOARD PIE CHART (Diperlebar & Rata Kanan Presisi)
 // ==========================================================
 const DashPieChart = ({ title, items, isGold, isDarkMode }) => {
   const total = items.reduce((sum, item) => sum + item.value, 0);
@@ -368,15 +381,24 @@ const DashPieChart = ({ title, items, isGold, isDarkMode }) => {
        <div className="relative w-20 h-20 xl:w-28 xl:h-28 flex items-center justify-center rounded-full shadow-[0_0_20px_rgba(0,0,0,0.4)] flex-shrink-0" style={{ background: `conic-gradient(${gradient || '#1e293b 0% 100%'})` }}>
           <div className={`w-10 h-10 xl:w-14 xl:h-14 rounded-full shadow-inner ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`} />
        </div>
-       <div className="flex flex-col gap-2 w-full max-w-[140px] xl:max-w-[180px] justify-center">
-        <h3 className={`text-xs xl:text-sm font-bold uppercase tracking-wider ${isGold ? (isDarkMode ? 'text-amber-400' : 'text-amber-500') : (isDarkMode ? 'text-slate-400' : 'text-slate-500')} mb-1 border-b ${isDarkMode ? 'border-slate-700/50' : 'border-slate-200'} pb-1.5`}>{title}</h3>
+       
+       {/* 1. max-w diperbesar agar gap dari teks ke angka menjadi lebih jauh dan lega */}
+       <div className="flex flex-col gap-2 w-full max-w-[160px] xl:max-w-[280px] justify-center">
+        
+        {/* 2. justify-between dipindah ke H3 agar ujung kanan judul dan ujung kanan persen lurus sempurna */}
+        <h3 className={`text-xs xl:text-sm font-bold uppercase tracking-wider ${isGold ? (isDarkMode ? 'text-amber-400' : 'text-amber-500') : (isDarkMode ? 'text-slate-400' : 'text-slate-500')} mb-1 border-b ${isDarkMode ? 'border-slate-700/50' : 'border-slate-200'} pb-1.5 flex justify-between items-center w-full`}>
+          {title}
+        </h3>
+        
          {data.map(d => (
-           <div key={d.name} className="flex justify-between items-center text-[10px] xl:text-[12px] font-bold">
-             <div className="flex items-center gap-2">
-               <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: d.color }} />
-               <span className={`truncate max-w-[60px] xl:max-w-[80px] ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`} title={d.name}>{d.name}</span>
+           <div key={d.name} className="flex justify-between items-center text-[10px] xl:text-[12px] font-bold w-full">
+             <div className="flex items-center gap-2 min-w-0">
+               <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: d.color }} />
+               {/* 3. max-w teks diperbesar sedikit agar teks tidak terlalu cepat terpotong */}
+               <span className={`truncate max-w-[80px] xl:max-w-[120px] ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`} title={d.name}>{d.name}</span>
              </div>
-             <span className={`font-mono text-[11px] xl:text-sm ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{d.pct}%</span>
+             {/* 4. text-right ditambahkan agar persen menempel kuat ke kanan */}
+             <span className={`font-mono text-[11px] xl:text-sm text-right flex-shrink-0 ${isDarkMode ? 'text-slate-100' : 'text-slate-800'}`}>{d.pct}%</span>
            </div>
          ))}
        </div>
@@ -421,7 +443,17 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  const [isDarkMode, setIsDarkMode] = useState(false); // Default tampilan terang (Light Mode)
+  // STATE UNTUK MODE TERANG/GELAP & WAKTU REAL-TIME
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // EFEK UNTUK UPDATE WAKTU SETIAP DETIK
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const [rawData, setRawData] = useState([]);
   const [mapReady, setMapReady] = useState(false);
@@ -446,6 +478,11 @@ export default function App() {
 
   const [selectedProviders, setSelectedProviders] = useState([]);
   const [isProviderDropdownOpen, setIsProviderDropdownOpen] = useState(false);
+
+  const [selectedBandwidths, setSelectedBandwidths] = useState([]);
+  const [isBandwidthDropdownOpen, setIsBandwidthDropdownOpen] = useState(false);
+
+  const [activeAvFilters, setActiveAvFilters] = useState(['green', 'yellow', 'red', 'black']);
 
   const [selectedYear, setSelectedYear] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(1);
@@ -518,6 +555,13 @@ export default function App() {
     return [...new Set(rawData.map(f => f.properties.Provider))]
       .filter(p => p && String(p).trim() !== '' && String(p).trim() !== '-' && String(p).toUpperCase() !== 'N/A')
       .sort();
+  }, [rawData]);
+
+  const uniqueBandwidths = useMemo(() => {
+    return [...new Set(rawData.map(f => f.properties.bandwidth))]
+      .filter(b => b && String(b).trim() !== '' && String(b).toUpperCase() !== 'N/A')
+      .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })); 
+      // localeCompare numeric true agar "2 Mbps" muncul sebelum "10 Mbps"
   }, [rawData]);
 
   const listProvinsi = useMemo(() => {
@@ -672,12 +716,28 @@ export default function App() {
         if (!selectedProviders.includes(pStr)) return false;
       }
 
+      // Filter Bandwidth (Multi-Select)
+      if (selectedBandwidths.length > 0) {
+        const bwStr = props.bandwidth ? String(props.bandwidth).trim() : '';
+        if (!selectedBandwidths.includes(bwStr)) return false;
+      }
+
       if (searchId) {
         const term = searchId.toLowerCase();
         const matchId = props.kodesite && String(props.kodesite).toLowerCase().includes(term);
         const matchName = props["NAMA SITE"] && String(props["NAMA SITE"]).toLowerCase().includes(term);
         if (!matchId && !matchName) return false;
       }
+
+      // Filter Nilai AV (Legenda Interaktif)
+      const avVal = parseSLA(props.AV) * 100;
+      let avCat = 'black';
+      if (avVal >= 90) avCat = 'green';
+      else if (avVal >= 50) avCat = 'yellow';
+      else if (avVal > 0) avCat = 'red';
+      else avCat = 'black';
+
+      if (!activeAvFilters.includes(avCat)) return false;
       
       const pProv = props.nama_prop || props.PROVINSI || props.provinsi;
       const pKab = props.nama_kab || props.KABUPATEN || props.kabupaten || props["KABUPATEN/KOTA"];
@@ -691,7 +751,7 @@ export default function App() {
 
       return true;
     });
-  }, [rawData, searchId, selectedTypes, selectedProviders, selectedStructures, activeMonths, hasData, selProv, selKab, selKec, selKel]);
+  }, [rawData, searchId, selectedTypes, selectedProviders, selectedStructures, selectedBandwidths, activeMonths, hasData, selProv, selKab, selKec, selKel, activeAvFilters]);
 
   const metrics = useMemo(() => {
     const total = filteredFeatures.length;
@@ -740,7 +800,23 @@ export default function App() {
         const pStr = props.Provider ? String(props.Provider).trim() : '';
         if (!selectedProviders.includes(pStr)) return false;
       }
+
+      // Filter Bandwidth (Multi-Select)
+      if (selectedBandwidths.length > 0) {
+        const bwStr = props.bandwidth ? String(props.bandwidth).trim() : '';
+        if (!selectedBandwidths.includes(bwStr)) return false;
+      }
       
+      // Filter Nilai AV (Legenda Interaktif)
+      const avVal = parseSLA(props.AV) * 100;
+      let avCat = 'black';
+      if (avVal >= 90) avCat = 'green';
+      else if (avVal >= 50) avCat = 'yellow';
+      else if (avVal > 0) avCat = 'red';
+      else avCat = 'black';
+
+      if (!activeAvFilters.includes(avCat)) return false;
+
       const pProv = props.nama_prop || props.PROVINSI || props.provinsi;
       const pKab = props.nama_kab || props.KABUPATEN || props.kabupaten || props["KABUPATEN/KOTA"];
       const pKec = props.nama_kec || props.KECAMATAN || props.kecamatan;
@@ -767,7 +843,7 @@ export default function App() {
       month: m,
       avg: (grouped[m].sum / grouped[m].count) * 100
     }));
-  }, [rawData, selectedTypes, selectedStructures, selectedProviders, selProv, selKab, selKec, selKel]);
+  }, [rawData, selectedTypes, selectedStructures, selectedProviders, selectedBandwidths, selProv, selKab, selKec, selKel, activeAvFilters]);
 
   const summaryData = useMemo(() => {
     const total = filteredFeatures.length;
@@ -844,8 +920,8 @@ export default function App() {
       
       let updatedData = [];
       // Teks di sini HARUS sama persis dengan title="..." pada DonutStat
-      if (prevSnapshot.title === 'Kategori Koneksi') updatedData = summaryData.tipe;
-      else if (prevSnapshot.title === 'Provider Utama') updatedData = summaryData.provider;
+      if (prevSnapshot.title === 'Tipe Koneksi') updatedData = summaryData.tipe;
+      else if (prevSnapshot.title === 'Provider') updatedData = summaryData.provider;
       else if (prevSnapshot.title === 'Struktur') updatedData = summaryData.struktur;
       else if (prevSnapshot.title === 'Kapasitas Bandwidth') updatedData = summaryData.bandwidth;
       
@@ -884,28 +960,36 @@ export default function App() {
       const loadLayers = () => {
         if (!map.current.getSource('batas-desa')) {
           const baseUrl = window.location.href.split('#')[0].replace(/\/$/, '') + '/';
-          map.current.addSource('batas-desa', { 
-            type: 'vector', 
-            url: `pmtiles://${baseUrl}batas_administrasi.pmtiles` 
-          });
+          map.current.addSource('batas-desa', { type: 'vector', url: `pmtiles://${baseUrl}batas_administrasi.pmtiles` });
           map.current.addLayer({ id: 'batas-desa-fill', type: 'fill', source: 'batas-desa', 'source-layer': 'batas_administrasi_clean', paint: { 'fill-color': '#111827', 'fill-opacity': currentBasemap === 'dark' ? 0.55 : 0.25 } });
           map.current.addLayer({ id: 'batas-desa-line', type: 'line', source: 'batas-desa', 'source-layer': 'batas_administrasi_clean', paint: { 'line-color': currentBasemap === 'dark' ? '#334155' : '#64748b', 'line-width': 0.2, 'line-opacity': 0.6 } });
         }
 
-        if (!map.current.getSource('titik-site-aktif')) {
-          map.current.addSource('titik-site-aktif', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, cluster: true, clusterMaxZoom: 14, clusterRadius: 50 });
-          map.current.addLayer({ id: 'clusters-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['has', 'point_count'], minzoom: 5.5, paint: { 'circle-color': '#10b981', 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 22, 50, 28], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
-          map.current.addLayer({ id: 'cluster-count-aktif', type: 'symbol', source: 'titik-site-aktif', filter: ['has', 'point_count'], minzoom: 5.5, layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 12, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#0f172a', 'text-halo-color': 'rgba(16, 185, 129, 0.8)', 'text-halo-width': 1 } });
-          map.current.addLayer({ id: 'unclustered-aktif', type: 'circle', source: 'titik-site-aktif', filter: ['!', ['has', 'point_count']], minzoom: 5.5, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 11], 'circle-color': '#10b981', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
-        }
+        // =======================================================
+        // KONFIGURASI 4 KATEGORI WARNA AV (DIBUAT OTOMATIS)
+        // =======================================================
+        const avCategories = [
+          { id: 'green', color: '#10b981', halo: 'rgba(16, 185, 129, 0.8)' },
+          { id: 'yellow', color: '#facc15', halo: 'rgba(250, 204, 21, 0.8)', text: '#0f172a' }, // Teks gelap khusus kuning
+          { id: 'red', color: '#ef4444', halo: 'rgba(239, 68, 68, 0.8)' },
+          { id: 'black', color: '#1e293b', halo: 'rgba(30, 41, 59, 0.8)' } // Slate tua agar tak hilang di peta Dark
+        ];
 
-        if (!map.current.getSource('titik-site-tidak-aktif')) {
-          map.current.addSource('titik-site-tidak-aktif', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, cluster: true, clusterMaxZoom: 14, clusterRadius: 40 });
-          map.current.addLayer({ id: 'clusters-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'], minzoom: 5.5, paint: { 'circle-color': '#ef4444', 'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 50, 24], 'circle-stroke-width': 2, 'circle-stroke-color': '#0f172a' } });
-          map.current.addLayer({ id: 'cluster-count-tidak-aktif', type: 'symbol', source: 'titik-site-tidak-aktif', filter: ['has', 'point_count'], minzoom: 5.5, layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 11, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(239, 68, 68, 0.8)', 'text-halo-width': 1 } });
-          map.current.addLayer({ id: 'unclustered-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif', filter: ['!', ['has', 'point_count']], minzoom: 5.5, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 9], 'circle-color': '#ef4444', 'circle-stroke-width': 1.5, 'circle-stroke-color': '#0f172a' } });
-        }
-          // LAYER BARU: CLUSTER PROVINSI (Hanya muncul saat Zoom < 5.5)
+        avCategories.forEach(cat => {
+          // LAYER CLUSTER
+          if (!map.current.getSource(`titik-site-${cat.id}`)) {
+            map.current.addSource(`titik-site-${cat.id}`, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, cluster: true, clusterMaxZoom: 14, clusterRadius: 50 });
+            map.current.addLayer({ id: `clusters-${cat.id}`, type: 'circle', source: `titik-site-${cat.id}`, filter: ['has', 'point_count'], minzoom: 5.5, paint: { 'circle-color': cat.color, 'circle-radius': ['step', ['get', 'point_count'], 18, 10, 26, 50, 34], 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' } });
+            map.current.addLayer({ id: `cluster-count-${cat.id}`, type: 'symbol', source: `titik-site-${cat.id}`, filter: ['has', 'point_count'], minzoom: 5.5, layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 12, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': cat.text || '#ffffff', 'text-halo-color': cat.halo, 'text-halo-width': 1.5 } });
+            map.current.addLayer({ id: `unclustered-${cat.id}`, type: 'circle', source: `titik-site-${cat.id}`, filter: ['!', ['has', 'point_count']], minzoom: 5.5, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 6, 12, 12], 'circle-color': cat.color, 'circle-stroke-width': 1.5, 'circle-stroke-color': '#ffffff' } });
+          }
+          // LAYER RAW
+          if (!map.current.getSource(`titik-site-${cat.id}-raw`)) {
+            map.current.addSource(`titik-site-${cat.id}-raw`, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.current.addLayer({ id: `raw-${cat.id}`, type: 'circle', source: `titik-site-${cat.id}-raw`, layout: { visibility: 'none' }, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 4, 12, 9], 'circle-color': cat.color, 'circle-stroke-width': 1, 'circle-stroke-color': '#ffffff' } });
+          }
+        });
+        // LAYER BARU: CLUSTER PROVINSI (Hanya muncul saat Zoom < 5.5)
         if (!map.current.getSource('province-centroids')) {
           map.current.addSource('province-centroids', { type: 'geojson', data: provinceCentroidsRef.current });
           
@@ -939,66 +1023,40 @@ export default function App() {
           
           // Layer 'province-cluster-label' (Teks Nama Provinsi) SUDAH DIHAPUS dari sini
           }
-          // LAYER BARU: RAW POINTS (SEBARAN MURNI TANPA CLUSTER)
-          if (!map.current.getSource('titik-site-aktif-raw')) {
-            map.current.addSource('titik-site-aktif-raw', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-            map.current.addLayer({
-              id: 'raw-aktif', type: 'circle', source: 'titik-site-aktif-raw',
-              layout: { visibility: 'none' }, // Default sembunyi, diurus oleh useEffect
-              paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 3, 12, 8], 'circle-color': '#10b981', 'circle-stroke-width': 1, 'circle-stroke-color': '#0f172a' }
-            });
-          }
-          if (!map.current.getSource('titik-site-tidak-aktif-raw')) {
-            map.current.addSource('titik-site-tidak-aktif-raw', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-            map.current.addLayer({
-              id: 'raw-tidak-aktif', type: 'circle', source: 'titik-site-tidak-aktif-raw',
-              layout: { visibility: 'none' },
-              paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 3, 12, 8], 'circle-color': '#ef4444', 'circle-stroke-width': 1, 'circle-stroke-color': '#0f172a' }
-            });
-          }
           setStyleLoaded(Date.now());
         };
 
       map.current.on('load', loadLayers);
       map.current.on('style.load', loadLayers);
 
+      // =======================================================
+      // KUMPULAN EVENT LISTENER KLIK & HOVER MOUSE
+      // =======================================================
       map.current.on('click', 'province-clusters', (e) => {
         const provName = e.features[0].properties.provinsi;
-
-        // Coba exact match dulu, lalu case-insensitive sebagai fallback
         const boundsData = areaBoundsRef.current;
-        const matchedKey = Object.keys(boundsData).find(
-          k => k === provName || k.toUpperCase() === provName?.toUpperCase()
-        );
-
+        const matchedKey = Object.keys(boundsData).find(k => k === provName || k.toUpperCase() === provName?.toUpperCase());
         if (matchedKey && boundsData[matchedKey]) {
           const [minLng, minLat, maxLng, maxLat] = boundsData[matchedKey];
-          map.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
-            padding: { top: 80, bottom: 260, left: 60, right: 60 },
-            maxZoom: 10,
-            duration: 1500
-          });
+          map.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: { top: 80, bottom: 260, left: 60, right: 60 }, maxZoom: 10, duration: 1500 });
         } else {
           map.current.flyTo({ center: e.features[0].geometry.coordinates, zoom: 6.5, duration: 1500 });
         }
       });
 
-      // Kursor pointer saat di atas cluster provinsi
       map.current.on('mouseenter', 'province-clusters', () => { map.current.getCanvas().style.cursor = 'pointer'; });
       map.current.on('mouseleave', 'province-clusters', () => { map.current.getCanvas().style.cursor = ''; });
 
-      // (Sisa kode interaksi klik unclustered, cluster, mousemove tetap dibiarkan berada di sini)
-      const unclusteredLayers = ['unclustered-aktif', 'unclustered-tidak-aktif', 'raw-aktif', 'raw-tidak-aktif'];
+      // ARRAY LAYER UNTUK INTERAKSI
+      const unclusteredLayers = ['unclustered-green', 'unclustered-yellow', 'unclustered-red', 'unclustered-black', 'raw-green', 'raw-yellow', 'raw-red', 'raw-black'];
+      const clusterLayers = ['clusters-green', 'clusters-yellow', 'clusters-red', 'clusters-black'];
+
       unclusteredLayers.forEach(layer => {
         map.current.on('click', layer, (e) => {
           if (e.features.length > 0) { setClickedSite(e.features[0].properties); setClickedRegion(null); setIsDetailOpen(true); }
         });
       });
 
-      // ==========================================================
-      // INTERAKSI KLIK CLUSTER REGULER (Zoom ke area sebaran titik)
-      // ==========================================================
-      const clusterLayers = ['clusters-aktif', 'clusters-tidak-aktif'];
       clusterLayers.forEach(layer => {
         map.current.on('click', layer, async (e) => {
           const features = map.current.queryRenderedFeatures(e.point, { layers: [layer] });
@@ -1006,35 +1064,24 @@ export default function App() {
 
           const clusterId = features[0].properties.cluster_id;
           const pointCount = features[0].properties.point_count;
-          const sourceId = layer === 'clusters-aktif' ? 'titik-site-aktif' : 'titik-site-tidak-aktif';
+          const sourceId = layer.replace('clusters-', 'titik-site-'); // Menerjemahkan nama layer menjadi ID source
 
           try {
-            const leafFeatures = await map.current.getSource(sourceId).getClusterLeaves(
-              clusterId, pointCount, 0
-            );
-
+            const leafFeatures = await map.current.getSource(sourceId).getClusterLeaves(clusterId, pointCount, 0);
             if (!leafFeatures || leafFeatures.length === 0) return;
 
             let minLng = 180, minLat = 90, maxLng = -180, maxLat = -90;
             leafFeatures.forEach(f => {
               const [lng, lat] = f.geometry.coordinates;
-              if (lng < minLng) minLng = lng;
-              if (lat < minLat) minLat = lat;
-              if (lng > maxLng) maxLng = lng;
-              if (lat > maxLat) maxLat = lat;
+              if (lng < minLng) minLng = lng; if (lat < minLat) minLat = lat; if (lng > maxLng) maxLng = lng; if (lat > maxLat) maxLat = lat;
             });
 
             if (minLng === maxLng && minLat === maxLat) {
               map.current.flyTo({ center: [minLng, minLat], zoom: 14, duration: 1500 });
             } else {
-              map.current.fitBounds(
-                [[minLng, minLat], [maxLng, maxLat]],
-                { padding: { top: 100, bottom: 280, left: 80, right: 80 }, maxZoom: 14, duration: 1500 }
-              );
+              map.current.fitBounds([[minLng, minLat], [maxLng, maxLat]], { padding: { top: 100, bottom: 280, left: 80, right: 80 }, maxZoom: 14, duration: 1500 });
             }
-          } catch (err) {
-            console.error('getClusterLeaves error:', err);
-          }
+          } catch (err) { console.error('getClusterLeaves error:', err); }
         });
       });
 
@@ -1045,7 +1092,7 @@ export default function App() {
       });
 
       map.current.on('mousemove', (e) => {
-        if (!map.current.getLayer('unclustered-aktif') || !map.current.getLayer('batas-desa-fill')) return;
+        if (!map.current.getLayer('unclustered-green') || !map.current.getLayer('batas-desa-fill')) return;
         try {
           const features = map.current.queryRenderedFeatures(e.point, { layers: [...unclusteredLayers, ...clusterLayers, 'batas-desa-fill'] });
           if (features.length > 0) { map.current.getCanvas().style.cursor = 'pointer'; } else { map.current.getCanvas().style.cursor = ''; }
@@ -1095,31 +1142,39 @@ export default function App() {
   }, [currentBasemap, mapReady]);
 
   // ==========================================================
-  // 1. EFEK PENYUAP DATA (RAW & CLUSTER)
+  // 1. EFEK PENYUAP DATA (BERDASARKAN 4 WARNA AV)
   // ==========================================================
   useEffect(() => {
-    // Tahan jika peta belum siap atau style dasar belum termuat
     if (!mapReady || !map.current || !styleLoaded) return;
 
-    // Ambil semua wadah yang ada
-    const sourceAktif = map.current.getSource('titik-site-aktif');
-    const sourceTidakAktif = map.current.getSource('titik-site-tidak-aktif');
-    const sourceAktifRaw = map.current.getSource('titik-site-aktif-raw');
-    const sourceTidakAktifRaw = map.current.getSource('titik-site-tidak-aktif-raw');
+    const sources = ['green', 'yellow', 'red', 'black'];
+    const hasAllSources = sources.every(s => map.current.getSource(`titik-site-${s}`) && map.current.getSource(`titik-site-${s}-raw`));
     
-    if (sourceAktif && sourceTidakAktif && sourceAktifRaw && sourceTidakAktifRaw) {
-      const dataAktif = filteredFeatures.filter(f => f.properties.status_link === 'AKTIF');
-      const dataTidakAktif = filteredFeatures.filter(f => f.properties.status_link !== 'AKTIF');
+    if (hasAllSources) {
+      const dataGreen = [];
+      const dataYellow = [];
+      const dataRed = [];
+      const dataBlack = [];
+
+      // Logika Pemisahan berdasarkan AV
+      filteredFeatures.forEach(f => {
+        const av = parseSLA(f.properties.AV) * 100;
+        if (av >= 90) dataGreen.push(f);
+        else if (av >= 50) dataYellow.push(f);
+        else if (av > 0) dataRed.push(f);
+        else dataBlack.push(f);
+      });
       
       const dummyPoint = { type: 'Feature', geometry: { type: 'Point', coordinates: [0, 0] }, properties: { status_link: 'DUMMY' } };
 
-      // Suntikkan data ke wadah Cluster
-      sourceAktif.setData({ type: 'FeatureCollection', features: dataAktif.length > 0 ? dataAktif : [dummyPoint] });
-      sourceTidakAktif.setData({ type: 'FeatureCollection', features: dataTidakAktif.length > 0 ? dataTidakAktif : [dummyPoint] });
-      
-      // Suntikkan data ke wadah Raw (Murni)
-      sourceAktifRaw.setData({ type: 'FeatureCollection', features: dataAktif.length > 0 ? dataAktif : [dummyPoint] });
-      sourceTidakAktifRaw.setData({ type: 'FeatureCollection', features: dataTidakAktif.length > 0 ? dataTidakAktif : [dummyPoint] });
+      // Suntikkan data ke masing-masing wadah warna
+      sources.forEach(s => {
+        const data = s === 'green' ? dataGreen : s === 'yellow' ? dataYellow : s === 'red' ? dataRed : dataBlack;
+        const payload = { type: 'FeatureCollection', features: data.length > 0 ? data : [dummyPoint] };
+        
+        map.current.getSource(`titik-site-${s}`).setData(payload);
+        map.current.getSource(`titik-site-${s}-raw`).setData(payload);
+      });
     }
   }, [filteredFeatures, mapReady, styleLoaded]);
 
@@ -1130,18 +1185,18 @@ export default function App() {
   useEffect(() => {
     if (!mapReady || !map.current || !styleLoaded) return;
 
-    // Kelompok layer yang berkaitan dengan Cluster (Termasuk bola Provinsi)
+    // Masukkan 4 warna ke daftar Cluster
     const clusteredLayers = [
-      'clusters-aktif', 'cluster-count-aktif', 'unclustered-aktif',
-      'clusters-tidak-aktif', 'cluster-count-tidak-aktif', 'unclustered-tidak-aktif',
+      'clusters-green', 'cluster-count-green', 'unclustered-green',
+      'clusters-yellow', 'cluster-count-yellow', 'unclustered-yellow',
+      'clusters-red', 'cluster-count-red', 'unclustered-red',
+      'clusters-black', 'cluster-count-black', 'unclustered-black',
       'province-clusters', 'province-cluster-count'
     ];
     
-    // Kelompok layer titik murni
-    const rawLayers = ['raw-aktif', 'raw-tidak-aktif'];
+    // Masukkan 4 warna ke daftar Murni (Raw)
+    const rawLayers = ['raw-green', 'raw-yellow', 'raw-red', 'raw-black'];
 
-    // Jika isClustered TRUE -> munculkan Cluster, sembunyikan Raw
-    // Jika isClustered FALSE -> sembunyikan Cluster, munculkan Raw
     clusteredLayers.forEach(layer => {
       if (map.current.getLayer(layer)) {
         map.current.setLayoutProperty(layer, 'visibility', isClustered ? 'visible' : 'none');
@@ -1155,10 +1210,6 @@ export default function App() {
     });
 
   }, [isClustered, mapReady, styleLoaded]);
-
-  // Pastikan posisi penempelannya di atas baris ini:
-  // --- TAMBAHKAN LOGIKA INTERSEPTOR LOGIN INI ---
-  // const handleLoginSubmit = (e) => { ...
 
   useEffect(() => {
     if (!mapReady || !map.current || !styleLoaded || listProvinsi.length === 0) return;
@@ -1366,7 +1417,7 @@ export default function App() {
     if (!modalTableData || modalTableData.length === 0) return;
 
     // 1. Siapkan Header Kolom
-    const headers = ['Site ID', 'Site Name', 'Provinsi', 'Kabupaten', 'Koneksi', 'Provider', 'Struktur', 'Bandwidth', 'SLA (AV) %', 'Status'];
+    const headers = ['Kode Site', 'Nama Site', 'Provinsi', 'Kabupaten', 'Koneksi', 'Provider', 'Struktur', 'Bandwidth', 'SLA (AV) %', 'Status'];
 
     // 2. Susun Baris Data
     const csvRows = [headers.join(',')];
@@ -1446,8 +1497,8 @@ export default function App() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-10 w-full max-w-lg px-12 pointer-events-none">
               <div className="w-16 h-1.5 bg-emerald-500 mb-6 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.8)] mx-auto"></div>
               <h1 className="text-5xl font-extrabold tracking-tighter text-white uppercase leading-none drop-shadow-2xl">
-                JARKOMDAT <br/>
-                <span className="text-emerald-400">MONITORING SYSTEM</span>
+                SISTEM MONITORING <br/>
+                <span className="text-emerald-400">JARKOMDAT</span>
               </h1>
               {/* Deskripsi dihilangkan di sini sesuai permintaan */}
             </div>
@@ -1570,18 +1621,30 @@ export default function App() {
                 <h1 className="text-2xl xl:text-3xl font-extrabold tracking-widest text-emerald-500 uppercase drop-shadow-md leading-none">
                   JARKOMDAT
                 </h1>
-                <h2 className={`text-[11px] xl:text-sm font-medium tracking-[0.3em] uppercase mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Executive Dashboard</h2>
+                <h2 className={`text-[11px] xl:text-sm font-medium tracking-[0.3em] uppercase mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Dashboard Eksekutif</h2>
               </div>
             </div>
             
-            {/* Tombol Toggles & Logout */}
-            <div className="flex gap-4">
+            {/* Waktu Real-Time, Tombol Toggles, & Logout */}
+            <div className="flex items-center gap-4">
+               
+               {/* JAM REAL-TIME (Tampil di layar menengah ke atas, dengan garis vertikal pembatas) */}
+               <div className={`hidden md:flex flex-col text-right mr-2 border-r pr-4 ${isDarkMode ? 'border-slate-700/80 text-slate-300' : 'border-slate-300 text-slate-600'}`}>
+                  <span className="text-[12px] font-bold uppercase tracking-widest">
+                    {currentTime.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' })}
+                  </span>
+                  <span className="text-lg font-mono font-extrabold text-emerald-500 drop-shadow-sm">
+                    {currentTime.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Jakarta' }).replace(/\./g, ':')} WIB
+                  </span>
+               </div>
+
                <button 
                  onClick={() => setIsDarkMode(!isDarkMode)} 
                  className={`px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition flex items-center gap-2 shadow-md border ${isDarkMode ? 'bg-slate-800 border-slate-700 text-yellow-400 hover:bg-slate-700' : 'bg-white border-slate-200 text-amber-500 hover:bg-slate-50'}`}
                >
-                 {isDarkMode ? '☀️ LIGHT MODE' : '🌙 DARK MODE'}
+                 {isDarkMode ? '☀️ MODE TERANG' : '🌙 MODE GELAP'}
                </button>
+               
                <button onClick={handleLogout} className="bg-red-500/20 border border-red-500/50 hover:bg-red-500 hover:text-white text-red-500 px-6 py-2 rounded-lg text-xs font-bold tracking-widest transition shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                  LOGOUT
                </button>
@@ -1598,51 +1661,106 @@ export default function App() {
                 </div>
                 <div className="w-[65%] flex flex-row gap-4 xl:gap-5 h-full">
                    <div className="flex-1 min-w-0"><DashCard title="Total Site" value={metrics.total} icon="🏢" color="text-blue-500" isGold onClick={() => setSelectedModal('total')} isDarkMode={isDarkMode} /></div>
-                   <div className="flex-1 min-w-0"><DashCard title="Online Site" value={metrics.online} sub={`(${metrics.onlinePct}%)`} icon="✅" color="text-emerald-500" isGold onClick={() => setSelectedModal('online')} isDarkMode={isDarkMode} /></div>
-                   <div className="flex-1 min-w-0"><DashCard title="Offline Site" value={metrics.offline} sub={`(${metrics.offlinePct}%)`} icon="❌" color="text-red-500" isGold onClick={() => setSelectedModal('offline')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Site Online" value={metrics.online} sub={`(${metrics.onlinePct}%)`} icon="✅" color="text-emerald-500" isGold onClick={() => setSelectedModal('online')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Site Offline" value={metrics.offline} sub={`(${metrics.offlinePct}%)`} icon="❌" color="text-red-500" isGold onClick={() => setSelectedModal('offline')} isDarkMode={isDarkMode} /></div>
                 </div>
              </div>
 
              {/* BARIS 2 */}
              <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
                 <div className="w-[35%] h-full">
-                   <DashPieChart title="Provider" items={[{ name: 'Telkom Only', value: providerMetrics.telkom, color: '#ef4444' }, { name: 'XL Only', value: providerMetrics.xl, color: '#f59e0b' }, { name: 'Icon Only', value: providerMetrics.icon, color: '#2dd4bf' }, { name: 'Telkom-Icon', value: providerMetrics.telkomIcon, color: '#38bdf8' }, { name: 'Telkom-XL', value: providerMetrics.telkomXl, color: '#c084fc' }]} isGold isDarkMode={isDarkMode} />
+                   <DashPieChart 
+                     title={
+                       <>
+                         <span className="truncate">Total Site per Provider</span>
+                         <span className="font-mono text-sm xl:text-base font-extrabold ml-2">
+                           {
+                             providerMetrics.telkom + 
+                             providerMetrics.xl + 
+                             providerMetrics.icon + 
+                             providerMetrics.telkomIcon + 
+                             providerMetrics.telkomXl
+                           }
+                         </span>
+                       </>
+                     } 
+                     items={[
+                       { name: 'Telkom Only', value: providerMetrics.telkom, color: '#ef4444' }, 
+                       { name: 'XLS Only', value: providerMetrics.xl, color: '#f59e0b' }, 
+                       { name: 'Icon+ Only', value: providerMetrics.icon, color: '#2dd4bf' }, 
+                       { name: 'Telkom-Icon+', value: providerMetrics.telkomIcon, color: '#38bdf8' }, 
+                       { name: 'Telkom-XLS', value: providerMetrics.telkomXl, color: '#c084fc' }
+                     ]} 
+                     isGold 
+                     isDarkMode={isDarkMode} 
+                   />
                 </div>
                 <div className="w-[65%] flex flex-row gap-3 xl:gap-4 h-full">
                    <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Single Link</span><span>Telkom Only</span></span>} value={providerMetrics.telkom} images={['./Telkom.png']} color="text-red-500" small onClick={() => setSelectedModal('telkom_only')} isDarkMode={isDarkMode} /></div>
-                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Single Link</span><span>XL Only</span></span>} value={providerMetrics.xl} images={['./XL.png']} color="text-amber-500" small onClick={() => setSelectedModal('xl_only')} isDarkMode={isDarkMode} /></div>
-                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Single Link</span><span>Icon Only</span></span>} value={providerMetrics.icon} images={['./Icon.png']} color="text-teal-500" small onClick={() => setSelectedModal('icon_only')} isDarkMode={isDarkMode} /></div>
-                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Dual Link</span><span>Telkom</span><span>& Icon</span></span>} value={providerMetrics.telkomIcon} images={['./Telkom.png', './Icon.png']} color="text-sky-500" small onClick={() => setSelectedModal('telkom_icon')} isDarkMode={isDarkMode} /></div>
-                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Dual Link</span><span>Telkom</span><span>& XL</span></span>} value={providerMetrics.telkomXl} images={['./Telkom.png', './XL.png']} color="text-purple-500" small onClick={() => setSelectedModal('telkom_xl')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Single Link</span><span>XLS Only</span></span>} value={providerMetrics.xl} images={['./XL.png']} color="text-amber-500" small onClick={() => setSelectedModal('xl_only')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Single Link</span><span>Icon+ Only</span></span>} value={providerMetrics.icon} images={['./Icon.png']} color="text-teal-500" small onClick={() => setSelectedModal('icon_only')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Dual Link</span><span>Telkom</span><span>& Icon+</span></span>} value={providerMetrics.telkomIcon} images={['./Telkom.png', './Icon.png']} color="text-sky-500" small onClick={() => setSelectedModal('telkom_icon')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title={<span className="flex flex-col leading-tight"><span>Dual Link</span><span>Telkom</span><span>& XLS</span></span>} value={providerMetrics.telkomXl} images={['./Telkom.png', './XL.png']} color="text-purple-500" small onClick={() => setSelectedModal('telkom_xl')} isDarkMode={isDarkMode} /></div>
                 </div>
              </div>
 
              {/* BARIS 3 */}
              <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
                 <div className="w-[35%] h-full">
-                   <DashBarChart title="Komparasi Total" items={[{ name: 'Telkom', value: providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon, color: '#ef4444' }, { name: 'XL', value: providerMetrics.xl + providerMetrics.telkomXl, color: '#f59e0b' }, { name: 'Icon', value: providerMetrics.icon + providerMetrics.telkomIcon, color: '#2dd4bf' }]} isGold isDarkMode={isDarkMode} />
+                   <DashPieChart 
+                     title={
+                       <span className="flex justify-between items-center w-full">
+                         <span>Total Sewa Link</span>
+                         {/* PERBAIKAN: Kelas warna dihapus agar otomatis mewarisi warna GOLD dari parent */}
+                         <span className="font-mono text-sm xl:text-base font-extrabold">
+                           {
+                             (providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon) + 
+                             (providerMetrics.xl + providerMetrics.telkomXl) + 
+                             (providerMetrics.icon + providerMetrics.telkomIcon)
+                           }
+                         </span>
+                       </span>
+                     } 
+                     items={[
+                       { name: 'Telkom', value: providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon, color: '#ef4444' }, 
+                       { name: 'XLS', value: providerMetrics.xl + providerMetrics.telkomXl, color: '#f59e0b' }, 
+                       { name: 'Icon+', value: providerMetrics.icon + providerMetrics.telkomIcon, color: '#2dd4bf' }
+                     ]} 
+                     isGold 
+                     isDarkMode={isDarkMode} 
+                   />
                 </div>
                 <div className="w-[65%] flex flex-row gap-4 xl:gap-5 h-full">
-                   <div className="flex-1 min-w-0"><DashCard title="Total Telkom" value={providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon} images={['./Telkom.png']} color="text-red-500" onClick={() => setSelectedModal('total_telkom')} isDarkMode={isDarkMode} /></div>
-                   <div className="flex-1 min-w-0"><DashCard title="Total XL" value={providerMetrics.xl + providerMetrics.telkomXl} images={['./XL.png']} color="text-amber-500" onClick={() => setSelectedModal('total_xl')} isDarkMode={isDarkMode} /></div>
-                   <div className="flex-1 min-w-0"><DashCard title="Total Icon" value={providerMetrics.icon + providerMetrics.telkomIcon} images={['./Icon.png']} color="text-teal-500" onClick={() => setSelectedModal('total_icon')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Total Link Telkom" value={providerMetrics.telkom + providerMetrics.telkomXl + providerMetrics.telkomIcon} images={['./Telkom.png']} color="text-red-500" onClick={() => setSelectedModal('total_telkom')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Total Link XLS" value={providerMetrics.xl + providerMetrics.telkomXl} images={['./XL.png']} color="text-amber-500" onClick={() => setSelectedModal('total_xl')} isDarkMode={isDarkMode} /></div>
+                   <div className="flex-1 min-w-0"><DashCard title="Total Link Icon+" value={providerMetrics.icon + providerMetrics.telkomIcon} images={['./Icon.png']} color="text-teal-500" onClick={() => setSelectedModal('total_icon')} isDarkMode={isDarkMode} /></div>
                 </div>
              </div>
 
-             {/* BARIS 4 */}
+             {/* BARIS 4: 80% Trend Chart & 20% Button Peta */}
              <div className="flex flex-row gap-4 xl:gap-5 h-full w-full">
-                <div className="w-[40%] h-full">
-                   <DashTimeSlider selectedYear={selectedYear} setSelectedYear={setSelectedYear} selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} uniqueYears={uniqueYears} isGold isDarkMode={isDarkMode} />
+                
+                {/* TREND BULANAN (Sekarang menjadi 80% lebih lebar dan lega) */}
+                <div className="w-[79.25%] h-full">
+                   <TrendChart 
+                     data={trendData} 
+                     displayRange={displayRange} 
+                     isGold 
+                     isDarkMode={isDarkMode} 
+                   />
                 </div>
-                <div className="w-[40%] h-full">
-                   <TrendChart data={trendData} displayRange={displayRange} isGold isDarkMode={isDarkMode} />
-                </div>
-                <div className="w-[20%] h-full">
-                  <button onClick={() => setShowMap(true)} className="w-full h-full bg-emerald-600 hover:bg-emerald-500 text-white text-xl font-extrabold tracking-widest uppercase rounded-2xl transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:shadow-[0_0_60px_rgba(16,185,129,0.6)] group flex flex-col items-center justify-center gap-4 border border-emerald-400 relative z-20">
+                
+                {/* TOMBOL BUKA PETA (Tetap 20%) */}
+                <div className="w-[20.75%] h-full">
+                  <button 
+                    onClick={() => setShowMap(true)} 
+                    className="w-full h-full bg-emerald-600 hover:bg-emerald-500 text-white text-xl font-extrabold tracking-widest uppercase rounded-2xl transition-all shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:shadow-[0_0_60px_rgba(16,185,129,0.6)] group flex flex-col items-center justify-center gap-4 border border-emerald-400 relative z-20"
+                  >
                       <span className="text-5xl group-hover:scale-125 transition-transform duration-500 drop-shadow-md">🗺️</span>
-                      <span className="text-white">Buka Mode Peta</span>
+                      <span className="text-white drop-shadow-md">Map Mode</span>
                   </button>
                 </div>
+                
              </div>
 
           </div>
@@ -1665,44 +1783,100 @@ export default function App() {
             </div>
           )}
 
-          {/* HIGHLIGHT UTAMA & TOGGLE CLUSTER */}
-          <div className="absolute top-4 left-4 z-10 pointer-events-auto flex items-stretch gap-3">
+          {/* KIRI ATAS: HIGHLIGHT UTAMA & LEGENDA WARNA AV */}
+          {/* PERBAIKAN: items-center diubah menjadi items-stretch agar tinggi dan posisinya sama persis */}
+          <div className="absolute top-2 left-4 z-40 pointer-events-auto flex items-stretch gap-3">
+            
+            {/* CARD: AVG AVAILABILITY */}
             <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-md px-5 py-3 rounded-xl border border-sky-500/50 shadow-[0_0_25px_rgba(14,165,233,0.25)] flex flex-col justify-center border-l-4 border-l-sky-400 relative overflow-hidden group">
               <div className="absolute inset-0 bg-sky-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-sky-200/80 mb-0.5 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" /> AVG. AVAILABILITY
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" /> RATA-RATA AVAILABILITY
               </span>
               <span className="text-2xl font-mono font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-300 leading-tight">
                 {metrics.avgSLA.toFixed(2)}%
               </span>
             </div>
 
-            <div className="bg-slate-900/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-700 shadow-xl flex items-center justify-center gap-3 self-start mt-0.5">
-              <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400">Peta Cluster</span>
-              <div className="flex items-center gap-1.5">
-                <span className={`text-[8px] font-bold tracking-widest ${!isClustered ? 'text-slate-300' : 'text-slate-600'}`}>OFF</span>
-                <button 
-                  onClick={() => setIsClustered(!isClustered)}
-                  className={`w-8 h-4 rounded-full relative transition-colors duration-300 focus:outline-none shadow-inner ${isClustered ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                >
-                  <div className={`absolute top-[2px] left-[2px] bg-white w-3 h-3 rounded-full shadow transition-transform duration-300 ${isClustered ? 'transform translate-x-4' : ''}`} />
-                </button>
-                <span className={`text-[8px] font-bold tracking-widest ${isClustered ? 'text-emerald-400' : 'text-slate-600'}`}>ON</span>
+            {/* CARD: LEGENDA AV (Filter Interaktif Multiple Choice) */}
+            <div className="bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-700 shadow-xl flex flex-col justify-center gap-0 h-full">
+              <div className="flex justify-between items-center mb-0.5">
+                <span className="text-[8px] uppercase font-bold tracking-widest text-slate-400">Filter Nilai AV</span>
+                {/* Tombol Reset Muncul Jika Ada yang Dimatikan */}
+                {activeAvFilters.length < 4 && (
+                  <button onClick={() => setActiveAvFilters(['green', 'yellow', 'red', 'black'])} className="text-[7px] bg-slate-800 px-1.5 py-0.5 rounded text-sky-400 hover:text-sky-300 transition-colors uppercase font-bold border border-slate-700">Reset</button>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-3 xl:gap-4 mt-0.5">
+                 {/* Hijau */}
+                 <button 
+                   onClick={() => setActiveAvFilters(prev => prev.includes('green') ? prev.filter(c => c !== 'green') : [...prev, 'green'])} 
+                   className={`flex items-center gap-1.5 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('green') ? 'opacity-30 grayscale' : 'opacity-100'}`}
+                 >
+                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/20 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>
+                   <span className="text-[10px] xl:text-[11px] font-mono font-bold text-slate-200">≥ 90%</span>
+                 </button>
+                 
+                 {/* Kuning */}
+                 <button 
+                   onClick={() => setActiveAvFilters(prev => prev.includes('yellow') ? prev.filter(c => c !== 'yellow') : [...prev, 'yellow'])} 
+                   className={`flex items-center gap-1.5 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('yellow') ? 'opacity-30 grayscale' : 'opacity-100'}`}
+                 >
+                   <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 border border-white/20 shadow-[0_0_5px_rgba(250,204,21,0.5)]"></span>
+                   <span className="text-[10px] xl:text-[11px] font-mono font-bold text-slate-200">50 - 89%</span>
+                 </button>
+                 
+                 {/* Merah */}
+                 <button 
+                   onClick={() => setActiveAvFilters(prev => prev.includes('red') ? prev.filter(c => c !== 'red') : [...prev, 'red'])} 
+                   className={`flex items-center gap-1.5 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('red') ? 'opacity-30 grayscale' : 'opacity-100'}`}
+                 >
+                   <span className="w-2.5 h-2.5 rounded-full bg-red-500 border border-white/20 shadow-[0_0_5px_rgba(239,68,68,0.5)]"></span>
+                   <span className="text-[10px] xl:text-[11px] font-mono font-bold text-slate-200">1 - 49%</span>
+                 </button>
+                 
+                 {/* Hitam / 0% */}
+                 <button 
+                   onClick={() => setActiveAvFilters(prev => prev.includes('black') ? prev.filter(c => c !== 'black') : [...prev, 'black'])} 
+                   className={`flex items-center gap-1.5 border-l border-slate-700/80 pl-2.5 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('black') ? 'opacity-30 grayscale' : 'opacity-100'}`}
+                 >
+                   <span className="w-2.5 h-2.5 rounded-full bg-slate-800 border border-white shadow-[0_0_8px_rgba(255,255,255,0.4)]"></span>
+                   <span className="text-[10px] xl:text-[11px] font-mono font-bold text-slate-200">0%</span>
+                 </button>
               </div>
             </div>
+
           </div>
 
-          {/* SISI KANAN ATAS: BASEMAP, NAVIGASI, & ZOOM GAUGE */}
-          <div className="absolute top-4 right-4 z-10 pointer-events-none flex flex-col items-end gap-3 animate-in slide-in-from-right duration-500">
+          {/* KANAN ATAS: BASEMAP, NAVIGASI, JAM, & ZOOM GAUGE */}
+          <div className="absolute top-4 right-4 z-40 pointer-events-none flex flex-col items-end gap-3 animate-in slide-in-from-right duration-500">
             
-            {/* Kontainer Baris Atas: Basemap & Tombol Dashboard */}
+            {/* Kontainer Baris Atas: Switch Cluster, Basemap & Tombol Dashboard */}
             <div className="flex items-center gap-2 pointer-events-auto">
               
-              <div className="bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 shadow-xl flex gap-1">
-                <button onClick={() => setCurrentBasemap('dark')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'dark' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Dark</button>
-                <button onClick={() => setCurrentBasemap('osm')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'osm' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Light</button>
+              {/* PETA CLUSTER SWITCH (Dipindah ke sini, di sebelah kiri Basemap) */}
+              <div className="bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 shadow-xl flex items-center justify-center gap-2.5">
+                <span className="text-[9px] uppercase font-bold tracking-widest text-slate-400 hidden sm:block">Peta Cluster</span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[8px] font-bold tracking-widest ${!isClustered ? 'text-slate-300' : 'text-slate-600'}`}>OFF</span>
+                  <button 
+                    onClick={() => setIsClustered(!isClustered)}
+                    className={`w-8 h-4 rounded-full relative transition-colors duration-300 focus:outline-none shadow-inner ${isClustered ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                  >
+                    <div className={`absolute top-[2px] left-[2px] bg-white w-3 h-3 rounded-full shadow transition-transform duration-300 ${isClustered ? 'transform translate-x-4' : ''}`} />
+                  </button>
+                  <span className={`text-[8px] font-bold tracking-widest ${isClustered ? 'text-emerald-400' : 'text-slate-600'}`}>ON</span>
+                </div>
               </div>
 
+              {/* BASEMAP SWITCHER (Dark/Light) */}
+              <div className="bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-800 shadow-xl flex gap-1">
+                <button onClick={() => setCurrentBasemap('dark')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'dark' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Gelap</button>
+                <button onClick={() => setCurrentBasemap('osm')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition ${currentBasemap === 'osm' ? 'bg-emerald-500 text-slate-950 shadow-md' : 'bg-transparent text-slate-400 hover:text-white'}`}>Terang</button>
+              </div>
+
+              {/* TOMBOL KEMBALI KE DASHBOARD */}
               <button 
                 onClick={() => setShowMap(false)} 
                 className="bg-orange-600/30 border border-orange-500/50 hover:bg-orange-500 hover:text-slate-950 text-white-400 p-1.5 px-4 rounded-xl text-xs font-bold tracking-wider transition-all shadow-xl h-full flex items-center gap-2"
@@ -1712,7 +1886,19 @@ export default function App() {
               </button>
             </div>
 
-            {/* ZOOM GAUGE DIPINDAH KE BAWAH (Rata Kanan) */}
+            {/* JAM REAL-TIME PETA */}
+            <div className="pointer-events-auto">
+               <div className="bg-slate-900/90 backdrop-blur-md px-3 py-1 rounded-xl border border-slate-800 shadow-xl flex flex-col items-end justify-center hidden sm:flex">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">
+                    {currentTime.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta' })}
+                  </span>
+                  <span className="text-[12px] font-mono font-extrabold text-emerald-400 leading-tight drop-shadow-sm mt-0.5">
+                    {currentTime.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Jakarta' }).replace(/\./g, ':')} WIB
+                  </span>
+               </div>
+            </div>
+
+            {/* ZOOM GAUGE */}
             <div className="pointer-events-auto">
               <ZoomGauge 
                 zoom={currentZoom} 
@@ -1729,18 +1915,21 @@ export default function App() {
           <div className="absolute top-0 left-0 w-full z-20 flex flex-col items-center pointer-events-none">
             <button 
               onClick={() => setIsFilterOpen(!isFilterOpen)} 
-              className={`relative z-30 bg-slate-900/95 backdrop-blur-md px-5 py-2.5 border-x border-b border-emerald-500/40 shadow-[0_4px_20px_rgba(16,185,129,0.15)] pointer-events-auto flex items-center gap-4 transition-all hover:bg-slate-800 cursor-pointer group ${isFilterOpen ? 'rounded-b-none' : 'rounded-b-2xl'}`}
+              className={`relative z-30 bg-slate-900/95 backdrop-blur-md px-5 py-3 border-x border-b border-emerald-500/40 shadow-[0_4px_20px_rgba(16,185,129,0.15)] pointer-events-auto flex items-center gap-4 transition-all hover:bg-slate-800 cursor-pointer group ${isFilterOpen ? 'rounded-b-none' : 'rounded-b-2xl'}`}
             >
               <img src="./kemendagri.svg" alt="Logo Kemendagri" className="h-10 w-10 object-contain flex-shrink-0 drop-shadow-md" />
-              <h1 className="text-sm font-bold tracking-widest text-emerald-400 uppercase drop-shadow-md text-center select-none">JARKOMDAT MONITORING SYSTEM</h1>
+              <h1 className="text-sm font-bold tracking-widest text-emerald-400 uppercase drop-shadow-md text-center select-none">SISTEM MONITORING JARKOMDAT</h1>
               <div className="bg-slate-800/80 w-6 h-6 flex items-center justify-center rounded text-xs text-slate-400 group-hover:text-emerald-400 transition font-mono flex-shrink-0">
                 {isFilterOpen ? '✕' : '▼'}
               </div>
             </button>
 
+            {/* PERBAIKAN 2: translate-y-0 diubah ke translate-y-4 agar panel turun memberi jarak (gap) dari tombol */}
             <div className={`relative z-20 pointer-events-auto transition-all duration-300 ease-out transform origin-top overflow-visible ${isFilterOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full absolute pointer-events-none'}`}>
-              <div className="bg-slate-900/95 backdrop-blur-md p-3 px-6 rounded-b-xl border-x border-b border-emerald-500/40 shadow-2xl flex flex-wrap justify-center items-center gap-3 text-xs -mt-[1px]">
-                <input type="text" placeholder="Search ID/Name..." className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 w-44 text-slate-200 focus:outline-none focus:border-emerald-500 transition shadow-inner text-xs font-semibold" value={searchId} onChange={(e) => setSearchId(e.target.value)} />
+              
+              {/* PERBAIKAN 3: border dibuat keliling (border), sudut membulat semua (rounded-2xl), dan hapus efek nempel (-mt-[1px]) */}
+              <div className="bg-slate-900/95 backdrop-blur-md p-3 px-6 rounded-2xl border border-emerald-500/40 shadow-[0_15px_40px_rgba(0,0,0,0.6)] flex flex-wrap justify-center items-center gap-3 text-xs">
+                <input type="text" placeholder="Cari Kode/Nama Site..." className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 w-44 text-slate-200 focus:outline-none focus:border-emerald-500 transition shadow-inner text-xs font-semibold" value={searchId} onChange={(e) => setSearchId(e.target.value)} />
                 
                 {/* FILTER TIPE KONEKSI */}
                 <div className="relative">
@@ -1790,6 +1979,30 @@ export default function App() {
                   )}
                 </div>
 
+                {/* FILTER BANDWIDTH */}
+                <div className="relative">
+                  <button type="button" onClick={() => setIsBandwidthDropdownOpen(!isBandwidthDropdownOpen)} className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-300 shadow-inner flex justify-between items-center w-48 text-left cursor-pointer hover:border-slate-600 transition text-xs font-semibold">
+                    <span className="truncate pr-2">{selectedBandwidths.length === 0 ? 'Bandwidth (All)' : `Bandwidth (${selectedBandwidths.length} Terpilih)`}</span>
+                    <span className="text-[9px] text-slate-500 font-mono flex-shrink-0">{isBandwidthDropdownOpen ? '▲' : '▼'}</span>
+                  </button>
+                  {isBandwidthDropdownOpen && (
+                    <div className="absolute left-0 mt-1 w-52 bg-slate-900 border border-slate-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-2 z-50 max-h-60 overflow-y-auto border-t-2 border-t-emerald-500 custom-scrollbar">
+                      {uniqueBandwidths.map(bw => {
+                        const isChecked = selectedBandwidths.includes(bw);
+                        return (
+                          <label key={bw} className="flex items-center gap-2.5 px-2 py-1.5 hover:bg-slate-850 rounded cursor-pointer select-none text-slate-300 transition-colors">
+                            <input type="checkbox" checked={isChecked} onChange={() => setSelectedBandwidths(isChecked ? selectedBandwidths.filter(item => item !== bw) : [...selectedBandwidths, bw])} className="accent-emerald-500 h-3.5 w-3.5 rounded border-slate-700 bg-slate-950 cursor-pointer" />
+                            <span className="text-xs font-semibold truncate" title={bw}>{bw}</span>
+                          </label>
+                        );
+                      })}
+                      {selectedBandwidths.length > 0 && (
+                        <button type="button" onClick={() => setSelectedBandwidths([])} className="w-full text-center text-[10px] text-red-400 hover:text-red-300 font-bold border-t border-slate-800 pt-2 mt-1.5 cursor-pointer">✕ Bersihkan Pilihan</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* FILTER STRUKTUR */}
                 <div className="relative">
                   <button type="button" onClick={() => setIsStructureDropdownOpen(!isStructureDropdownOpen)} className="bg-slate-950 border border-slate-700 rounded px-3 py-1.5 text-slate-300 shadow-inner flex justify-between items-center w-48 text-left cursor-pointer hover:border-slate-600 transition text-xs font-semibold">
@@ -1828,12 +2041,33 @@ export default function App() {
                 {clickedSite ? (
                   <div className="space-y-2.5 text-sm pb-2">
                     <div className="grid grid-cols-2 gap-3">
-                      <div><label className="text-[11px] uppercase text-slate-500 block font-semibold">Site Name</label><p className="text-base font-bold text-emerald-400 leading-tight truncate" title={clickedSite["NAMA SITE"] || clickedSite.text_site}>{clickedSite["NAMA SITE"] || clickedSite.text_site || '-'}</p></div>
-                      <div><label className="text-[11px] uppercase text-slate-500 block font-semibold">Site ID</label><p className="font-mono font-bold text-slate-200 text-base truncate">{clickedSite.kodesite || '-'}</p></div>
+                      <div><label className="text-[11px] uppercase text-slate-500 block font-semibold">Nama Site</label><p className="text-base font-bold text-emerald-400 leading-tight truncate" title={clickedSite["NAMA SITE"] || clickedSite.text_site}>{clickedSite["NAMA SITE"] || clickedSite.text_site || '-'}</p></div>
+                      <div><label className="text-[11px] uppercase text-slate-500 block font-semibold">Kode Site</label><p className="font-mono font-bold text-slate-200 text-base truncate">{clickedSite.kodesite || '-'}</p></div>
                     </div>
                     <div className="grid grid-cols-2 gap-3 border-y border-slate-800/60 py-2.5 my-2 bg-slate-950/40 p-2 rounded">
-                      <div><label className="text-[11px] uppercase text-slate-500 block">Availability</label><p className={`font-mono font-bold text-xl ${getAVColorClass(clickedSite.AV)}`}>{(parseSLA(clickedSite.AV) * 100).toFixed(2)}%</p></div>
-                      <div><label className="text-[11px] uppercase text-slate-500 block">Struktur</label><p className="font-semibold text-slate-300 truncate">{renderField('struct', clickedSite.STRUKTUR)}</p></div>
+                      {(() => {
+                        // 1. Mencari nilai terbesar di antara semua AV yang tersedia di site tersebut
+                        const v1 = parseSLA(clickedSite.AV_1);
+                        const v2 = parseSLA(clickedSite.AV_2);
+                        const vMain = parseSLA(clickedSite.AV);
+                        const maxAV = Math.max(v1, v2, vMain);
+                        
+                        return (
+                          <div>
+                            {/* Label diubah sedikit agar memperjelas bahwa ini adalah nilai tertinggi (Max) */}
+                            <label className="text-[11px] uppercase text-slate-500 block font-semibold">Availability</label>
+                            
+                            {/* 2. Menampilkan angka dan warna berdasarkan nilai terbesar */}
+                            <p className={`font-mono font-bold text-xl mt-0.5 ${getAVColorClass(maxAV)}`}>
+                              {(maxAV * 100).toFixed(2)}%
+                            </p>
+                          </div>
+                        );
+                      })()}
+                      <div>
+                        <label className="text-[11px] uppercase text-slate-500 block font-semibold">Struktur</label>
+                        <p className="font-semibold text-slate-300 truncate mt-0.5">{renderField('struct', clickedSite.STRUKTUR)}</p>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div><label className="text-[11px] uppercase text-slate-500 block">Provinsi</label><p className="text-slate-300 font-semibold truncate" title={renderField('prov', clickedSite.nama_prop || clickedSite.PROVINSI || clickedSite.provinsi)}>{renderField('prov', clickedSite.nama_prop || clickedSite.PROVINSI || clickedSite.provinsi)}</p></div>
@@ -1850,7 +2084,7 @@ export default function App() {
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-[11px] pl-2 border-l border-slate-800">
                           <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_1 || '-'}</p></div>
-                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_1 || '-'}</p></div>
+                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Bandwidth</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_1 || '-'}</p></div>
                           <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_1 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_1 || '-'}</p></div>
                           <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_1)}`}>{clickedSite.AV_1 || '-'}</p></div>
                         </div>
@@ -1863,7 +2097,7 @@ export default function App() {
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-[11px] pl-2 border-l border-slate-800">
                           <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Koneksi</label><p className="text-slate-300 font-medium truncate">{clickedSite.type_koneksi_2 || '-'}</p></div>
-                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Bw</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_2 || '-'}</p></div>
+                          <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Bandwidth</label><p className="text-slate-300 font-medium truncate">{clickedSite.bandwidth_2 || '-'}</p></div>
                           <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">Status</label><p className={`font-semibold ${clickedSite.status_link_2 === 'AKTIF' ? 'text-emerald-400' : 'text-red-400'}`}>{clickedSite.status_link_2 || '-'}</p></div>
                           <div className="col-span-1"><label className="text-[10px] uppercase text-slate-500 block">AV</label><p className={`font-mono font-bold ${getAVColorClass(clickedSite.AV_2)}`}>{clickedSite.AV_2 || '-'}</p></div>
                         </div>
@@ -1872,7 +2106,7 @@ export default function App() {
                     {clickedSite.AV_Rata_Rata && clickedSite.AV_Rata_Rata !== '-' && clickedSite.AV_Rata_Rata !== 'nan' && clickedSite.Provider_2 !== '-' && (
                       <div className="pt-2 mt-1 border-t border-slate-800/80">
                         <div className="flex justify-between items-center bg-slate-950/60 p-2 rounded-lg border border-slate-800/80 shadow-inner">
-                          <span className="text-[14px] uppercase text-slate-400 font-bold tracking-wider">AVG. AV</span>
+                          <span className="text-[14px] uppercase text-slate-400 font-bold tracking-wider">RATA-RATA AV</span>
                           <span className={`font-mono font-bold text-lg drop-shadow-md ${getAVColorClass(clickedSite.AV_Rata_Rata)}`}>{clickedSite.AV_Rata_Rata}</span>
                         </div>
                       </div>
@@ -1903,10 +2137,10 @@ export default function App() {
             <div className="w-[20rem] bg-slate-900/95 backdrop-blur-md p-5 rounded-bl-2xl border-y border-l border-emerald-500/40 shadow-[-20px_0_30px_rgba(0,0,0,0.5)] h-fit max-h-[55vh] pointer-events-auto flex flex-col">
               <h2 className="text-base font-bold uppercase tracking-widest text-emerald-400 border-b border-slate-800 pb-2 mb-4 flex items-center gap-2"><span className="text-base">🎛️</span> Filter Hierarki</h2>
               <div className="space-y-3 flex-1 overflow-visible pr-1 pb-1">
-                <div className="space-y-1.5"><label className="text-[12px] text-slate-500 uppercase font-medium block">Provinsi</label><CustomSelect value={selProv} onChange={(val) => handleHierarchyChange('prov', val)} options={listProvinsi} placeholder="-- Select Provinsi --" /></div>
-                <div className="space-y-1.5 mt-2"><label className="text-[12px] text-slate-500 uppercase font-medium block">Kabupaten / Kota</label><CustomSelect value={selKab} onChange={(val) => handleHierarchyChange('kab', val)} options={listKabupaten} placeholder="-- Select Kabupaten --" disabled={!selProv} /></div>
-                <div className="space-y-1.5 mt-2"><label className="text-[12px] text-slate-500 uppercase font-medium block">Kecamatan</label><CustomSelect value={selKec} onChange={(val) => handleHierarchyChange('kec', val)} options={listKecamatan} placeholder="-- Select Kecamatan --" disabled={!selKab} /></div>
-                <div className="space-y-1.5 mt-2 mb-2"><label className="text-[12px] text-slate-500 uppercase font-medium block">Kelurahan / Desa</label><CustomSelect value={selKel} onChange={(val) => handleHierarchyChange('kel', val)} options={listKelurahan} placeholder="-- Select Kelurahan --" disabled={!selKec} /></div>
+                <div className="space-y-1.5"><label className="text-[12px] text-slate-500 uppercase font-medium block">Provinsi</label><CustomSelect value={selProv} onChange={(val) => handleHierarchyChange('prov', val)} options={listProvinsi} placeholder="-- Pilih Provinsi --" /></div>
+                <div className="space-y-1.5 mt-2"><label className="text-[12px] text-slate-500 uppercase font-medium block">Kabupaten / Kota</label><CustomSelect value={selKab} onChange={(val) => handleHierarchyChange('kab', val)} options={listKabupaten} placeholder="-- Pilih Kabupaten --" disabled={!selProv} /></div>
+                <div className="space-y-1.5 mt-2"><label className="text-[12px] text-slate-500 uppercase font-medium block">Kecamatan</label><CustomSelect value={selKec} onChange={(val) => handleHierarchyChange('kec', val)} options={listKecamatan} placeholder="-- Pilih Kecamatan --" disabled={!selKab} /></div>
+                <div className="space-y-1.5 mt-2 mb-2"><label className="text-[12px] text-slate-500 uppercase font-medium block">Kelurahan / Desa</label><CustomSelect value={selKel} onChange={(val) => handleHierarchyChange('kel', val)} options={listKelurahan} placeholder="-- Pilih Kelurahan --" disabled={!selKec} /></div>
                 <div className="mt-4 pt-4 border-t border-slate-800 pb-1"><p className="text-[10px] text-slate-500 italic text-center leading-relaxed">Pilih opsi di atas untuk auto-zoom ke poligon wilayah.</p></div>
               </div>
             </div>
@@ -1934,7 +2168,7 @@ export default function App() {
                     </div>
                   </div>
                   <div onClick={() => setSelectedModal('online')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-emerald-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
-                    <div className="text-[11px] xl:text-[12px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-emerald-400 transition leading-tight">2. Online Site</div>
+                    <div className="text-[11px] xl:text-[12px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-emerald-400 transition leading-tight">2. Site Online</div>
                     <div className="flex flex-col mt-auto">
                       <div className="flex items-baseline gap-1.5 mb-1">
                         <span className="text-2xl xl:text-3xl font-bold font-mono text-emerald-400 leading-none">{metrics.online}</span>
@@ -1944,7 +2178,7 @@ export default function App() {
                     </div>
                   </div>
                   <div onClick={() => setSelectedModal('offline')} className="flex-1 bg-slate-900/80 backdrop-blur-md p-3 rounded-xl border border-slate-800 shadow-xl cursor-pointer hover:border-red-500/50 hover:bg-slate-900 transition flex flex-col justify-between group">
-                    <div className="text-[11px] xl:text-[12px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-red-400 transition leading-tight">3. Offline Site</div>
+                    <div className="text-[11px] xl:text-[12px] uppercase font-bold tracking-wider text-slate-400 group-hover:text-red-400 transition leading-tight">3. Site Offline</div>
                     <div className="flex flex-col mt-auto">
                       <div className="flex items-baseline gap-1.5 mb-1">
                         <span className="text-2xl xl:text-3xl font-bold font-mono text-red-400 leading-none">{metrics.offline}</span>
@@ -1978,10 +2212,10 @@ export default function App() {
 
               {/* SISI KANAN: CARD 4 DATA SUMMARY */}
               <div className={`transition-all duration-500 ease-in-out ${selectedPieData ? 'w-1/2' : 'w-2/3'} h-full bg-slate-900/80 backdrop-blur-md p-3 xl:p-4 rounded-xl border border-slate-800 shadow-xl flex flex-col relative`}>
-                <div className="text-[14px] xl:text-[16px] uppercase font-bold tracking-wider text-slate-400 mb-1">4. Data Summary</div>
+                <div className="text-[14px] xl:text-[16px] uppercase font-bold tracking-wider text-slate-400 mb-1">4. Data Statistik</div>
                 <div className="flex justify-center gap-2 xl:gap-4 items-start flex-1 w-full overflow-visible mt-1">
-                  <DonutStat title="Kategori Koneksi" data={summaryData.tipe} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Kategori Koneksi'} />
-                  <DonutStat title="Provider Utama" data={summaryData.provider} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Provider Utama'} />
+                  <DonutStat title="Tipe Koneksi" data={summaryData.tipe} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Tipe Koneksi'} />
+                  <DonutStat title="Provider" data={summaryData.provider} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Provider'} />
                   <DonutStat title="Struktur" data={summaryData.struktur} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Struktur'} />
                   <DonutStat title="Kapasitas Bandwidth" data={summaryData.bandwidth} onPieClick={setSelectedPieData} isActive={!selectedPieData || selectedPieData.title === 'Kapasitas Bandwidth'} />
                 </div>
@@ -2028,19 +2262,19 @@ export default function App() {
                 <div className="p-4 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
                   <div>
                     {/* Gunakan replace untuk membuang underscore pada judul */}
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">Raw Data Table — {selectedModal.toUpperCase().replace('_', ' ')} SITES</h3>
-                    <p className="text-xs text-slate-400 font-mono mt-0.5">Records Found: {modalTableData.length} lines</p>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">Tabel Data — Site {selectedModal.toUpperCase().replace('_', ' ')}</h3>
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">Data Ditemukan: {modalTableData.length} Baris</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button onClick={handleExportExcel} className="bg-emerald-600/20 border border-emerald-500/50 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-semibold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-2"><span>⬇</span> Export Excel</button>
-                    <button onClick={() => setSelectedModal(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition font-semibold">✕ Close Table</button>
+                    <button onClick={handleExportExcel} className="bg-emerald-600/20 border border-emerald-500/50 hover:bg-emerald-500 hover:text-slate-950 text-emerald-400 font-semibold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-2"><span>⬇</span> Unduh Excel</button>
+                    <button onClick={() => setSelectedModal(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs transition font-semibold">✕ Tutup Tabel</button>
                   </div>
                 </div>
                 <div className="flex-1 overflow-auto p-4">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800 sticky top-0 z-10">
-                        <th className="p-3">Site ID</th><th className="p-3">Site Name</th><th className="p-3">Provinsi</th><th className="p-3">Kabupaten</th><th className="p-3">Koneksi</th><th className="p-3">Provider</th><th className="p-3">Struktur</th><th className="p-3">Bandwidth</th><th className="p-3">SLA (AV)</th><th className="p-3">Status</th>
+                        <th className="p-3">Kode Site</th><th className="p-3">Nama Site</th><th className="p-3">Provinsi</th><th className="p-3">Kabupaten</th><th className="p-3">Koneksi</th><th className="p-3">Provider</th><th className="p-3">Struktur</th><th className="p-3">Bandwidth</th><th className="p-3">SLA (AV)</th><th className="p-3">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-850">
@@ -2063,7 +2297,7 @@ export default function App() {
                           </tr>
                         );
                       }) : (
-                        <tr><td colSpan="10" className="p-8 text-center text-slate-500 italic">No matching records available.</td></tr>
+                        <tr><td colSpan="10" className="p-8 text-center text-slate-500 italic">Tidak Ada Data Yang Cocok.</td></tr>
                       )}
                     </tbody>
                   </table>
