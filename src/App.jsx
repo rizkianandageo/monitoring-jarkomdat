@@ -610,7 +610,7 @@ export default function App() {
 
     // Tidak ada hierarki aktif sama sekali → kembali ke nasional
     if (!selProv) {
-      map.current.flyTo({ center: [118.0, -4.0], zoom: 4.5, duration: 1500 });
+      map.current.flyTo({ center: [118.0, -5.5], zoom: 4.5, duration: 1500 });
       return;
     }
 
@@ -979,14 +979,14 @@ export default function App() {
           // LAYER CLUSTER
           if (!map.current.getSource(`titik-site-${cat.id}`)) {
             map.current.addSource(`titik-site-${cat.id}`, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, cluster: true, clusterMaxZoom: 14, clusterRadius: 50 });
-            map.current.addLayer({ id: `clusters-${cat.id}`, type: 'circle', source: `titik-site-${cat.id}`, filter: ['has', 'point_count'], minzoom: 5.5, paint: { 'circle-color': cat.color, 'circle-radius': ['step', ['get', 'point_count'], 18, 10, 26, 50, 34], 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' } });
+            map.current.addLayer({ id: `clusters-${cat.id}`, type: 'circle', source: `titik-site-${cat.id}`, filter: ['has', 'point_count'], minzoom: 5.5, paint: { 'circle-color': cat.color, 'circle-radius': ['step', ['get', 'point_count'], 20, 10, 28, 50, 36], 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' } });
             map.current.addLayer({ id: `cluster-count-${cat.id}`, type: 'symbol', source: `titik-site-${cat.id}`, filter: ['has', 'point_count'], minzoom: 5.5, layout: { 'text-field': '{point_count_abbreviated}', 'text-size': 12, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': cat.text || '#ffffff', 'text-halo-color': cat.halo, 'text-halo-width': 1.5 } });
-            map.current.addLayer({ id: `unclustered-${cat.id}`, type: 'circle', source: `titik-site-${cat.id}`, filter: ['!', ['has', 'point_count']], minzoom: 5.5, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 6, 12, 12], 'circle-color': cat.color, 'circle-stroke-width': 1.5, 'circle-stroke-color': '#ffffff' } });
+            map.current.addLayer({ id: `unclustered-${cat.id}`, type: 'circle', source: `titik-site-${cat.id}`, filter: ['!', ['has', 'point_count']], minzoom: 5.5, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 8, 12, 14], 'circle-color': cat.color, 'circle-stroke-width': 1.5, 'circle-stroke-color': '#ffffff' } });
           }
           // LAYER RAW
           if (!map.current.getSource(`titik-site-${cat.id}-raw`)) {
             map.current.addSource(`titik-site-${cat.id}-raw`, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-            map.current.addLayer({ id: `raw-${cat.id}`, type: 'circle', source: `titik-site-${cat.id}-raw`, layout: { visibility: 'none' }, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 4, 12, 9], 'circle-color': cat.color, 'circle-stroke-width': 1, 'circle-stroke-color': '#ffffff' } });
+            map.current.addLayer({ id: `raw-${cat.id}`, type: 'circle', source: `titik-site-${cat.id}-raw`, layout: { visibility: 'none' }, paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 5, 12, 9], 'circle-color': cat.color, 'circle-stroke-width': 1, 'circle-stroke-color': '#ffffff' } });
           }
         });
         // LAYER BARU: CLUSTER PROVINSI (Hanya muncul saat Zoom < 5.5)
@@ -1783,9 +1783,8 @@ export default function App() {
             </div>
           )}
 
-          {/* KIRI ATAS: HIGHLIGHT UTAMA & LEGENDA WARNA AV */}
-          {/* PERBAIKAN: items-center diubah menjadi items-stretch agar tinggi dan posisinya sama persis */}
-          <div className="absolute top-2 left-4 z-40 pointer-events-auto flex items-stretch gap-3">
+          {/* KIRI ATAS: HIGHLIGHT UTAMA */}
+          <div className="absolute top-4 left-4 z-40 pointer-events-auto flex items-stretch gap-3">
             
             {/* CARD: AVG AVAILABILITY */}
             <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-md px-5 py-3 rounded-xl border border-sky-500/50 shadow-[0_0_25px_rgba(14,165,233,0.25)] flex flex-col justify-center border-l-4 border-l-sky-400 relative overflow-hidden group">
@@ -1796,55 +1795,6 @@ export default function App() {
               <span className="text-2xl font-mono font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-300 leading-tight">
                 {metrics.avgSLA.toFixed(2)}%
               </span>
-            </div>
-
-            {/* CARD: LEGENDA AV (Filter Interaktif Multiple Choice) */}
-            <div className="bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-xl border border-slate-700 shadow-xl flex flex-col justify-center gap-0 h-full">
-              <div className="flex justify-between items-center mb-0.5">
-                <span className="text-[8px] uppercase font-bold tracking-widest text-slate-400">Filter Nilai AV</span>
-                {/* Tombol Reset Muncul Jika Ada yang Dimatikan */}
-                {activeAvFilters.length < 4 && (
-                  <button onClick={() => setActiveAvFilters(['green', 'yellow', 'red', 'black'])} className="text-[7px] bg-slate-800 px-1.5 py-0.5 rounded text-sky-400 hover:text-sky-300 transition-colors uppercase font-bold border border-slate-700">Reset</button>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-3 xl:gap-4 mt-0.5">
-                 {/* Hijau */}
-                 <button 
-                   onClick={() => setActiveAvFilters(prev => prev.includes('green') ? prev.filter(c => c !== 'green') : [...prev, 'green'])} 
-                   className={`flex items-center gap-1.5 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('green') ? 'opacity-30 grayscale' : 'opacity-100'}`}
-                 >
-                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white/20 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>
-                   <span className="text-[10px] xl:text-[11px] font-mono font-bold text-slate-200">≥ 90%</span>
-                 </button>
-                 
-                 {/* Kuning */}
-                 <button 
-                   onClick={() => setActiveAvFilters(prev => prev.includes('yellow') ? prev.filter(c => c !== 'yellow') : [...prev, 'yellow'])} 
-                   className={`flex items-center gap-1.5 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('yellow') ? 'opacity-30 grayscale' : 'opacity-100'}`}
-                 >
-                   <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 border border-white/20 shadow-[0_0_5px_rgba(250,204,21,0.5)]"></span>
-                   <span className="text-[10px] xl:text-[11px] font-mono font-bold text-slate-200">50 - 89%</span>
-                 </button>
-                 
-                 {/* Merah */}
-                 <button 
-                   onClick={() => setActiveAvFilters(prev => prev.includes('red') ? prev.filter(c => c !== 'red') : [...prev, 'red'])} 
-                   className={`flex items-center gap-1.5 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('red') ? 'opacity-30 grayscale' : 'opacity-100'}`}
-                 >
-                   <span className="w-2.5 h-2.5 rounded-full bg-red-500 border border-white/20 shadow-[0_0_5px_rgba(239,68,68,0.5)]"></span>
-                   <span className="text-[10px] xl:text-[11px] font-mono font-bold text-slate-200">1 - 49%</span>
-                 </button>
-                 
-                 {/* Hitam / 0% */}
-                 <button 
-                   onClick={() => setActiveAvFilters(prev => prev.includes('black') ? prev.filter(c => c !== 'black') : [...prev, 'black'])} 
-                   className={`flex items-center gap-1.5 border-l border-slate-700/80 pl-2.5 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('black') ? 'opacity-30 grayscale' : 'opacity-100'}`}
-                 >
-                   <span className="w-2.5 h-2.5 rounded-full bg-slate-800 border border-white shadow-[0_0_8px_rgba(255,255,255,0.4)]"></span>
-                   <span className="text-[10px] xl:text-[11px] font-mono font-bold text-slate-200">0%</span>
-                 </button>
-              </div>
             </div>
 
           </div>
@@ -2149,6 +2099,60 @@ export default function App() {
               <span className="text-slate-300 group-hover:text-emerald-400 font-bold tracking-[0.2em] uppercase text-[10px] transition-colors" style={{ writingMode: 'vertical-rl' }}>Filter Hierarki</span>
               <span className="text-slate-500 text-[12px] font-mono mt-1">{isHierarchyOpen ? '▶' : '◀'}</span>
             </button>
+          </div>
+
+          {/* TENGAH BAWAH: FILTER AV (LEGENDA INTERAKTIF) */}
+          <div className="absolute bottom-[215px] xl:bottom-[235px] left-1/2 -translate-x-1/2 z-40 pointer-events-auto animate-in slide-in-from-bottom duration-500">
+            
+            {/* PERBAIKAN: Padding (px, py) dan gap diperkecil agar wujud card jauh lebih pendek dan padat */}
+            <div className="bg-slate-900/95 backdrop-blur-md px-5 py-1 rounded-full border border-slate-700 shadow-[0_10px_20px_rgba(0,0,0,0.6)] flex flex-col items-center justify-center gap-1">
+              
+              <div className="flex items-center justify-between w-full relative">
+                <span className="text-[8px] uppercase font-bold tracking-widest text-slate-400 text-center w-full">Filter Availability</span>
+                {/* Tombol Reset */}
+                {activeAvFilters.length < 4 && (
+                  <button onClick={() => setActiveAvFilters(['green', 'yellow', 'red', 'black'])} className="absolute right-0 top-1/2 -translate-y-1/2 text-[7px] bg-slate-800 px-1.5 py-0.5 rounded-full text-sky-400 hover:text-sky-300 transition-colors uppercase font-bold border border-slate-600 shadow-inner">Reset</button>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-5 xl:gap-4 mt-0.5">
+                 {/* Hijau */}
+                 <button 
+                   onClick={() => setActiveAvFilters(prev => prev.includes('green') ? prev.filter(c => c !== 'green') : [...prev, 'green'])} 
+                   className={`flex items-center gap-1 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('green') ? 'opacity-30 grayscale' : 'opacity-100'}`}
+                 >
+                   <span className="w-3 h-3 rounded-full bg-emerald-500 border border-white/20 shadow-[0_0_5px_rgba(16,185,129,0.5)]"></span>
+                   <span className="text-[12px] xl:text-[14px] font-mono font-bold text-slate-200">≥ 90%</span>
+                 </button>
+                 
+                 {/* Kuning */}
+                 <button 
+                   onClick={() => setActiveAvFilters(prev => prev.includes('yellow') ? prev.filter(c => c !== 'yellow') : [...prev, 'yellow'])} 
+                   className={`flex items-center gap-1 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('yellow') ? 'opacity-30 grayscale' : 'opacity-100'}`}
+                 >
+                   <span className="w-3 h-3 rounded-full bg-yellow-400 border border-white/20 shadow-[0_0_5px_rgba(250,204,21,0.5)]"></span>
+                   <span className="text-[12px] xl:text-[14px] font-mono font-bold text-slate-200">50 - 89%</span>
+                 </button>
+                 
+                 {/* Merah */}
+                 <button 
+                   onClick={() => setActiveAvFilters(prev => prev.includes('red') ? prev.filter(c => c !== 'red') : [...prev, 'red'])} 
+                   className={`flex items-center gap-1 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('red') ? 'opacity-30 grayscale' : 'opacity-100'}`}
+                 >
+                   <span className="w-3 h-3 rounded-full bg-red-500 border border-white/20 shadow-[0_0_5px_rgba(239,68,68,0.5)]"></span>
+                   <span className="text-[12px] xl:text-[14px] font-mono font-bold text-slate-200">1 - 49%</span>
+                 </button>
+                 
+                 {/* Hitam / 0% */}
+                 <button 
+                   onClick={() => setActiveAvFilters(prev => prev.includes('black') ? prev.filter(c => c !== 'black') : [...prev, 'black'])} 
+                   className={`flex items-center gap-1 border-l border-slate-700/80 pl-0 xl:pl-0 transition-all duration-300 hover:scale-105 ${!activeAvFilters.includes('black') ? 'opacity-30 grayscale' : 'opacity-100'}`}
+                 >
+                   <span className="w-3 h-3 rounded-full bg-slate-800 border border-white shadow-[0_0_8px_rgba(255,255,255,0.4)]"></span>
+                   <span className="text-[12px] xl:text-[14px] font-mono font-bold text-slate-200">0%</span>
+                 </button>
+              </div>
+            </div>
           </div>
 
           {/* ==========================================================
